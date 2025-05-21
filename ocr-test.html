@@ -119,11 +119,40 @@
                     }
                 });
                 video.srcObject = stream;
-
                 videoTrack = stream.getVideoTracks()[0];
+
+                // Wait until video has dimensions
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => resolve();
+                });
+
+                createOverlay(); // ✅
             } catch (err) {
                 alert('Camera access denied: ' + err.message);
             }
+        }
+
+
+        function createOverlay() {
+            const cropWidth = 480;
+            const cropHeight = 200;
+            const sx = (video.videoWidth - cropWidth) * 0.25;
+            const sy = (video.videoHeight - cropHeight) * 0.50;
+
+            const scaleX = video.clientWidth / video.videoWidth;
+            const scaleY = video.clientHeight / video.videoHeight;
+            const overlay = document.createElement('div');
+            overlay.id = 'cropOverlay';
+            overlay.style.position = 'absolute';
+            overlay.style.border = '2px solid red';
+            overlay.style.width = `${cropWidth * scaleX}px`;
+            overlay.style.height = `${cropHeight * scaleY}px`;
+            const rect = video.getBoundingClientRect();
+            overlay.style.left = `${sx * scaleX + rect.left}px`;
+            overlay.style.top = `${sy * scaleY + rect.top + window.scrollY}px`;
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '10';
+            video.parentElement.appendChild(overlay);
         }
 
 
@@ -203,6 +232,14 @@
                 clearInterval(ocrInterval);
                 ocrInterval = null;
                 toggleOcrBtn.textContent = 'Start OCR';
+                if (flashOn && videoTrack) {
+                    try {
+                        await videoTrack.applyConstraints({ advanced: [{ torch: false }] });
+                        flashOn = false;
+                    } catch (err) {
+                        console.warn('Failed to turn off flashlight:', err);
+                    }
+                }
 
                 // Stop video stream
                 if (video.srcObject) {
