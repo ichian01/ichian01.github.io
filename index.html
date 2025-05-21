@@ -1,13 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hello World</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iggy's Github Page</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 1rem 1rem;
+      font-size: 2.5rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    section {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1.5rem;
+      border-radius: 12px;
+      backdrop-filter: blur(5px);
+      transition: transform 0.2s ease;
+    }
+
+    section:hover {
+      transform: scale(1.01);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    a {
+      display: block;
+      margin: 0.5rem 0;
+      color: #ffffff;
+      text-decoration: underline;
+      font-size: 1.1rem;
+    }
+
+    a:hover {
+      color: #cfe3ff;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello, World!</h1>
-  <p><a href="oci-test.html">OCI Test</a></p>
-  <p><a href="flap.html">Flappy Game</a></p>
-  <p><a href="asteroid.html">Asteroids Game</a></p>
+  <header>Iggy's Github Page</header>
+
+  <main>
+    <section>
+      <h2>Web Projects</h2>
+      <a href="ocr-test.html">OCR Test</a>
+      <a href="flap.html">Flappy Bird Clone</a>
+      <a href="asteroid.html">Asteroids Clone</a>
+    </section>
+  </main>
+
+  <footer>© 2025 Iggy Chiang</footer>
 </body>
 </html>
