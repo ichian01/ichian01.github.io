@@ -198,17 +198,26 @@
         }
 
 
-        function toggleOCR() {
+        async function toggleOCR() {
             if (ocrInterval) {
                 clearInterval(ocrInterval);
                 ocrInterval = null;
                 toggleOcrBtn.textContent = 'Start OCR';
+
+                // Stop video stream
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                videoTrack = null;
             } else {
+                await startCamera();
                 performOCR();
                 ocrInterval = setInterval(performOCR, intervalMs);
                 toggleOcrBtn.textContent = 'Stop OCR';
             }
         }
+
 
         copyBtn.addEventListener('click', () => {
             const originalText = output.value;
