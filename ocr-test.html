@@ -18,6 +18,12 @@
         video {
             width: 100%;
             max-width: 480px;
+            height: auto;
+            object-fit: cover;
+            object-position: top center;
+            aspect-ratio: 4 / 3;
+            clip-path: inset(0 0 50% 0);
+            /* crops bottom half */
             border: 1px solid #ccc;
             border-radius: 8px;
         }
@@ -129,8 +135,9 @@
                 overlay.style.border = '2px solid red';
                 overlay.style.width = `${cropWidth * scaleX}px`;
                 overlay.style.height = `${cropHeight * scaleY}px`;
-                overlay.style.left = `${sx * scaleX + video.offsetLeft}px`;
-                overlay.style.top = `${sy * scaleY + video.offsetTop}px`;
+                const rect = video.getBoundingClientRect();
+                overlay.style.left = `${sx * scaleX + rect.left}px`;
+                overlay.style.top = `${sy * scaleY + rect.top + window.scrollY}px`;
                 overlay.style.pointerEvents = 'none';
                 overlay.style.zIndex = '10';
                 video.parentElement.appendChild(overlay);
@@ -140,7 +147,9 @@
             ctx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
 
             // === OpenCV processing ===
-            const src = cv.imread(canvas);            // RGBA
+            await new Promise(resolve => setTimeout(resolve, 50)); // after drawImage
+            const src = cv.imread(canvas);
+
             let gray = new cv.Mat();
             let dst = new cv.Mat();
 
@@ -155,24 +164,35 @@
                 2
             );
 
+            if (dst.cols !== canvas.width || dst.rows !== canvas.height) {
+                cv.resize(dst, dst, new cv.Size(canvas.width, canvas.height));
+            }
+
             // Display processed image
             cv.imshow('processedCanvas', dst);
 
             // Push thresholded image back into canvas for Tesseract
-            const imgData = ctx.createImageData(dst.cols, dst.rows);
-            for (let i = 0; i < dst.data.length; i++) {
-                imgData.data[i * 4] = dst.data[i];
-                imgData.data[i * 4 + 1] = dst.data[i];
-                imgData.data[i * 4 + 2] = dst.data[i];
+            const imgData = ctx.createImageData(canvas.width, canvas.height);
+
+            const pixelCount = Math.min(dst.data.length, canvas.width * canvas.height);
+            for (let i = 0; i < pixelCount; i++) {
+                const val = dst.data[i];
+                imgData.data[i * 4] = val;
+                imgData.data[i * 4 + 1] = val;
+                imgData.data[i * 4 + 2] = val;
                 imgData.data[i * 4 + 3] = 255;
             }
+
             ctx.putImageData(imgData, 0, 0);
 
             // OCR
             const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
                 langPath: 'https://tessdata.projectnaptha.com/4.0.0_best',
             });
-            output.value = text.trim();
+            if (text.trim()) {
+                output.value = text.trim();
+            }
+
 
             // Clean up
             src.delete(); gray.delete(); dst.delete();
