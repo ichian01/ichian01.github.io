@@ -62,15 +62,14 @@
 <body>
     <h1>Live OCR Scanner</h1>
     <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" width="320" height="240"></canvas>
+    <canvas id="canvas" width="320" height="200"></canvas>
+    <canvas id="processedCanvas" width="480" height="200" style="margin-top:10px; border:1px solid #ccc;"></canvas>
     <textarea id="output" placeholder="Recognized text appears here..."></textarea>
     <div class="buttons">
         <button id="toggleOcrBtn">Start OCR</button>
         <button id="copyBtn">Copy</button>
         <button id="flashBtn">Toggle Flashlight</button>
     </div>
-
-    <canvas id="processedCanvas" width="320" height="240" style="margin-top:10px; border:1px solid #ccc;"></canvas>
 
     <script>
         const video = document.getElementById('video');
@@ -104,10 +103,10 @@
 
 
         async function performOCR() {
-            const cropWidth = 320;
-            const cropHeight = 240;
-            const sx = (video.videoWidth - cropWidth) / 2;
-            const sy = (video.videoHeight - cropHeight) / 2;
+            const cropWidth = 480;
+            const cropHeight = 200;
+            const sx = (video.videoWidth - cropWidth) * 0.33333;
+            const sy = (video.videoHeight - cropHeight) * 0.75;
 
             // Draw red crop box overlay
             const overlayCtx = video.getContext?.('2d'); // only works on canvas, not video
