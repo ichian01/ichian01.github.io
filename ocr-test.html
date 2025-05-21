@@ -66,9 +66,9 @@
     <canvas id="processedCanvas" width="480" height="200" style="margin-top:10px; border:1px solid #ccc;"></canvas>
     <textarea id="output" placeholder="Recognized text appears here..."></textarea>
     <div class="buttons">
+        <button id="flashBtn">Toggle Flashlight</button>
         <button id="toggleOcrBtn">Start OCR</button>
         <button id="copyBtn">Copy</button>
-        <button id="flashBtn">Toggle Flashlight</button>
     </div>
 
     <script>
@@ -162,9 +162,17 @@
         }
 
         copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(output.value)
-                .then(() => alert('Text copied!'))
-                .catch(err => alert('Copy failed: ' + err));
+            const originalText = output.value;
+            navigator.clipboard.writeText(originalText)
+                .then(() => {
+                    output.value = 'Text copied!';
+                    setTimeout(() => {
+                        output.value = originalText;
+                    }, 1500); // restore after 1.5s
+                })
+                .catch(err => {
+                    output.value = 'Copy failed: ' + err;
+                });
         });
 
         document.getElementById('flashBtn').addEventListener('click', async () => {
