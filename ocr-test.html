@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Label Scanner</title>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+    <style>
+        body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #result {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #status {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Label OCR Scanner</h1>
+        
+        <input type="file" id="image-input" accept="image/*" capture="environment">
+        <p id="status"></p>
+        
+        <div class="button-container">
+            <textarea id="result" placeholder="Extracted text will appear here..."></textarea>
+            <button onclick="copyToClipboard()">Copy</button>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('image-input');
+        const resultArea = document.getElementById('result');
+        const statusElement = document.getElementById('status');
+
+        imageInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            statusElement.textContent = 'Processing image...';
+
+            try {
+                const worker = await Tesseract.createWorker();
+                await worker.loadLanguage('eng');
+                await worker.initialize('eng');
+                
+                const { data: { text } } = await worker.recognize(file);
+                resultArea.value = text;
+                
+                await worker.terminate();
+                statusElement.textContent = 'Text extraction complete!';
+            } catch (error) {
+                console.error(error);
+                statusElement.textContent = 'Error processing image';
+            }
+        });
+
+        function copyToClipboard() {
+            resultArea.select();
+            document.execCommand('copy');
+            statusElement.textContent = 'Text copied to clipboard!';
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
