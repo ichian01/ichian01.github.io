@@ -17,7 +17,8 @@
 
         canvas {
             display: block;
-            background: black;
+            width: 100vw;
+            height: 100vh;
         }
     </style>
 </head>
@@ -32,9 +33,7 @@
         const W = canvas.width;
         const H = canvas.height;
 
-        let keys = {};
-        let bullets = [];
-        let asteroids = [];
+        let bullets = [], asteroids = [], gameRunning = false, gameOverFlag = false;
 
         const ship = {
             x: W / 2,
@@ -50,7 +49,7 @@
             const angle = Math.random() * 2 * Math.PI;
             const speed = Math.random() * 1.5 + 0.5;
             return {
-                x: Math.random() < 0.5 ? 0 : W,
+                x: Math.random() * W,
                 y: Math.random() * H,
                 dx: Math.cos(angle) * speed,
                 dy: Math.sin(angle) * speed,
@@ -86,73 +85,32 @@
             ctx.stroke();
         }
 
-        function update() {
-            ctx.clearRect(0, 0, W, H);
+        function drawControls() {
+            // FIRE button
+            ctx.beginPath();
+            ctx.arc(W - 60, H - 60, 40, 0, Math.PI * 2);
+            ctx.fillStyle = "white";
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.font = "bold 16px sans-serif";
+            ctx.fillText("FIRE", W - 82, H - 56);
 
-            // Move ship
-            ship.x += ship.dx;
-            ship.y += ship.dy;
+            ctx.fillStyle = "white";
+            // Left arrow
+            ctx.beginPath();
+            ctx.moveTo(30, H - 60);
+            ctx.lineTo(60, H - 80);
+            ctx.lineTo(60, H - 40);
+            ctx.closePath();
+            ctx.fill();
 
-            // Screen wrap
-            if (ship.x < 0) ship.x += W;
-            if (ship.x > W) ship.x -= W;
-            if (ship.y < 0) ship.y += H;
-            if (ship.y > H) ship.y -= H;
-
-            // Move bullets
-            bullets = bullets.filter(b => b.life > 0);
-            for (let b of bullets) {
-                b.x += b.dx;
-                b.y += b.dy;
-                b.life--;
-                drawBullet(b);
-            }
-
-            // Move asteroids
-            for (let a of asteroids) {
-                a.x += a.dx;
-                a.y += a.dy;
-                if (a.x < 0) a.x += W;
-                if (a.x > W) a.x -= W;
-                if (a.y < 0) a.y += H;
-                if (a.y > H) a.y -= H;
-                drawAsteroid(a);
-            }
-
-            // Collision detection
-            for (let a of asteroids) {
-                const dx = a.x - ship.x;
-                const dy = a.y - ship.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < a.radius + ship.radius) {
-                    gameOver();
-                    return;
-                }
-            }
-
-            // Bullet-asteroid collisions
-            for (let i = asteroids.length - 1; i >= 0; i--) {
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    const dx = bullets[j].x - asteroids[i].x;
-                    const dy = bullets[j].y - asteroids[i].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < asteroids[i].radius) {
-                        asteroids.splice(i, 1);
-                        bullets.splice(j, 1);
-                        break;
-                    }
-                }
-            }
-
-            drawShip();
-
-            requestAnimationFrame(update);
-        }
-
-        function gameOver() {
-            ctx.fillStyle = "red";
-            ctx.font = "40px sans-serif";
-            ctx.fillText("Game Over", W / 2 - 100, H / 2);
+            // Right arrow
+            ctx.beginPath();
+            ctx.moveTo(150, H - 60);
+            ctx.lineTo(120, H - 80);
+            ctx.lineTo(120, H - 40);
+            ctx.closePath();
+            ctx.fill();
         }
 
         function fireBullet() {
@@ -166,35 +124,142 @@
             });
         }
 
-        // Touch-based control
-        let lastTouch = null;
+        function resetGame() {
+            ship.x = W / 2;
+            ship.y = H / 2;
+            ship.dx = 0;
+            ship.dy = 0;
+            ship.angle = 0;
+            bullets = [];
+            asteroids = [];
+            for (let i = 0; i < 5; i++) asteroids.push(createAsteroid());
+            gameOverFlag = false;
+            gameRunning = true;
+            update();
+        }
 
-        canvas.addEventListener("touchstart", e => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                lastTouch = { x: touch.clientX, y: touch.clientY };
-            } else if (e.touches.length === 2) {
-                fireBullet();
+        function gameOver() {
+            gameRunning = false;
+            gameOverFlag = true;
+            ctx.fillStyle = "red";
+            ctx.font = "40px sans-serif";
+            ctx.fillText("Game Over", W / 2 - 100, H / 2);
+            ctx.font = "20px sans-serif";
+            ctx.fillText("Tap to Restart", W / 2 - 70, H / 2 + 30);
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, W, H);
+            ship.x += ship.dx;
+            ship.y += ship.dy;
+            ship.x = (ship.x + W) % W;
+            ship.y = (ship.y + H) % H;
+
+            bullets = bullets.filter(b => b.life > 0);
+            for (let b of bullets) {
+                b.x += b.dx;
+                b.y += b.dy;
+                b.life--;
+                drawBullet(b);
             }
-        });
 
-        canvas.addEventListener("touchmove", e => {
-            e.preventDefault();
-            if (!lastTouch) return;
-            const touch = e.touches[0];
-            const dx = touch.clientX - lastTouch.x;
-            const dy = touch.clientY - lastTouch.y;
-            ship.angle += dx * 0.01;
-            ship.dx += Math.cos(ship.angle) * dy * 0.01;
-            ship.dy += Math.sin(ship.angle) * dy * 0.01;
-            lastTouch = { x: touch.clientX, y: touch.clientY };
+            for (let a of asteroids) {
+                a.x = (a.x + a.dx + W) % W;
+                a.y = (a.y + a.dy + H) % H;
+                drawAsteroid(a);
+            }
+
+            for (let a of asteroids) {
+                const dx = a.x - ship.x;
+                const dy = a.y - ship.y;
+                if (Math.hypot(dx, dy) < a.radius + ship.radius) return gameOver();
+            }
+
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const dx = bullets[j].x - asteroids[i].x;
+                    const dy = bullets[j].y - asteroids[i].y;
+                    if (Math.hypot(dx, dy) < asteroids[i].radius) {
+                        asteroids.splice(i, 1);
+                        bullets.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+
+            drawShip();
+            drawControls();
+            requestAnimationFrame(update);
+        }
+
+        function resizeCanvas() {
+            let W = window.innerWidth;
+            let H = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            W = canvas.width;
+            H = canvas.height;
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any transforms
+            ctx.scale(dpr, dpr);
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+        canvas.addEventListener("click", handleInput);
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault(); // prevent simulated mouse event
+            handleInput(e.touches[0]);
         }, { passive: false });
 
-        // Populate asteroids
-        for (let i = 0; i < 5; i++) asteroids.push(createAsteroid());
+        function handleInput(e) {
+            let x, y;
 
-        update();
+            if (e.touches && e.touches.length > 0) {
+                x = e.touches[0].clientX;
+                y = e.touches[0].clientY;
+            } else {
+                x = e.clientX;
+                y = e.clientY;
+            }
+
+            if (!gameRunning) {
+                resetGame();
+                return;
+            }
+
+            // FIRE button
+            const distToFire = Math.hypot(x - (W - 60), y - (H - 60));
+            if (distToFire < 40) {
+                fireBullet();
+                return;
+            }
+
+            // Left arrow
+            if (x > 20 && x < 70 && y > H - 90 && y < H - 30) {
+                ship.angle -= 0.2;
+                return;
+            }
+
+            // Right arrow
+            if (x > 110 && x < 160 && y > H - 90 && y < H - 30) {
+                ship.angle += 0.2;
+                return;
+            }
+
+            // Else: thrust forward
+            ship.dx += Math.cos(ship.angle) * 0.5;
+            ship.dy += Math.sin(ship.angle) * 0.5;
+        };
+
+        // Initial screen
+        ctx.fillStyle = "white";
+        ctx.font = "30px sans-serif";
+        ctx.fillText("Tap to Start", W / 2 - 80, H / 2);
     </script>
+
 </body>
 
 </html>
