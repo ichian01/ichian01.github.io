@@ -19,12 +19,14 @@
             width: 100%;
             max-width: 480px;
             height: auto;
+            min-height: 240px;
+
             object-fit: cover;
             object-position: top center;
-            aspect-ratio: 4 / 3;
             border: 1px solid #ccc;
             border-radius: 8px;
         }
+
 
         textarea {
             width: 100%;
@@ -76,7 +78,9 @@
 
 <body>
     <h1>Live OCR Scanner</h1>
-    <video id="video" autoplay playsinline></video>
+    <div id="videoWrapper" style="position: relative; display: inline-block;">
+        <video id="video" autoplay playsinline></video>
+      </div>
     <canvas id="canvas" width="480" height="200"></canvas>
     <canvas id="processedCanvas" width="480" height="200"></canvas>
     <textarea id="output" placeholder="Recognized text appears here..."></textarea>
@@ -132,12 +136,20 @@
             }
         }
 
-
-        function createOverlay() {
+        function getCropRect() {
             const cropWidth = 480;
             const cropHeight = 200;
             const sx = (video.videoWidth - cropWidth) * 0.25;
             const sy = (video.videoHeight - cropHeight) * 0.50;
+
+            return { sx, sy, cropWidth, cropHeight };
+        }
+
+        function createOverlay() {
+            const existing = document.getElementById('cropOverlay');
+            if (existing) existing.remove();
+
+            const { sx, sy, cropWidth, cropHeight } = getCropRect();
 
             const scaleX = video.clientWidth / video.videoWidth;
             const scaleY = video.clientHeight / video.videoHeight;
@@ -149,40 +161,19 @@
             overlay.style.height = `${cropHeight * scaleY}px`;
             const rect = video.getBoundingClientRect();
             overlay.style.left = `${sx * scaleX + rect.left}px`;
-            overlay.style.top = `${sy * scaleY + rect.top + window.scrollY}px`;
+            overlay.style.top = `${sy * scaleY + rect.top}px`;
             overlay.style.pointerEvents = 'none';
             overlay.style.zIndex = '10';
-            video.parentElement.appendChild(overlay);
+            document.getElementById('videoWrapper').appendChild(overlay);
+
         }
 
 
         async function performOCR() {
-            const cropWidth = 480;
-            const cropHeight = 200;
-            const sx = (video.videoWidth - cropWidth) * 0.25;
-            const sy = (video.videoHeight - cropHeight) * 0.50;
+            const { sx, sy, cropWidth, cropHeight } = getCropRect();
 
-            // Draw red crop box overlay
-            if (!document.getElementById('cropOverlay')) {
-                const scaleX = video.clientWidth / video.videoWidth;
-                const scaleY = video.clientHeight / video.videoHeight;
-                const overlay = document.createElement('div');
-                overlay.id = 'cropOverlay';
-                overlay.style.position = 'absolute';
-                overlay.style.border = '2px solid red';
-                overlay.style.width = `${cropWidth * scaleX}px`;
-                overlay.style.height = `${cropHeight * scaleY}px`;
-                const rect = video.getBoundingClientRect();
-                overlay.style.left = `${sx * scaleX + rect.left}px`;
-                overlay.style.top = `${sy * scaleY + rect.top + window.scrollY}px`;
-                overlay.style.pointerEvents = 'none';
-                overlay.style.zIndex = '10';
-                video.parentElement.appendChild(overlay);
-            }
-
-            // Draw video frame to canvas
             ctx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-            await new Promise(resolve => setTimeout(resolve, 50)); // allow drawImage to settle
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             if (useOpenCV) {
                 const src = cv.imread(canvas);
