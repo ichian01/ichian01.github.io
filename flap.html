@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Pipe Navigator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #70c5ce;
+            touch-action: manipulation;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #70c5ce;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="game"></canvas>
+
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
+
+        let bird = {
+            x: 150,
+            y: H / 2,
+            radius: 15,
+            velocity: 0,
+            gravity: 0.5,
+            lift: -8
+        };
+
+        let pipes = [];
+        let frame = 0;
+        let score = 0;
+        let gameOver = false;
+
+        function drawBird() {
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FFD700";
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawPipe(pipe) {
+            ctx.fillStyle = "#228B22";
+            ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+            ctx.fillRect(pipe.x, pipe.bottom, pipe.width, H - pipe.bottom);
+        }
+
+        function newPipe() {
+            let gap = 160;
+            let top = Math.random() * (H - gap - 100) + 60;
+            return {
+                x: W,
+                width: 55,
+                top: top,
+                bottom: top + gap
+            };
+        }
+
+        function resetGame() {
+            bird.y = H / 2;
+            bird.velocity = 0;
+            pipes = [];
+            frame = 0;
+            score = 0;
+            gameOver = false;
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "white";
+            ctx.font = "30px sans-serif";
+            ctx.fillText("Score: " + score, 10, 40);
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, W, H);
+            frame++;
+
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            //how far apart are the pipes
+            if (frame % 90 === 0) {
+                pipes.push(newPipe());
+            }
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                let p = pipes[i];
+                p.x -= 3;
+
+                drawPipe(p);
+
+                // Collision
+                if (
+                    bird.x + bird.radius > p.x &&
+                    bird.x - bird.radius < p.x + p.width &&
+                    (bird.y - bird.radius < p.top || bird.y + bird.radius > p.bottom)
+                ) {
+                    gameOver = true;
+                }
+
+                // Scoring
+                if (p.x + p.width < bird.x && !p.passed) {
+                    score++;
+                    p.passed = true;
+                }
+
+                if (p.x + p.width < 0) {
+                    pipes.splice(i, 1);
+                }
+            }
+
+            drawBird();
+            drawScore();
+
+            // Ground or ceiling collision
+            if (bird.y + bird.radius > H || bird.y - bird.radius < 0) {
+                gameOver = true;
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = "black";
+                ctx.font = "40px sans-serif";
+                ctx.fillText("Game Over", W / 2 - 100, H / 2);
+                ctx.font = "20px sans-serif";
+                ctx.fillText("Tap to Restart", W / 2 - 70, H / 2 + 30);
+            } else {
+                requestAnimationFrame(update);
+            }
+        }
+
+        function flap() {
+            if (gameOver) {
+                resetGame();
+                update();
+            } else {
+                bird.velocity = bird.lift;
+            }
+        }
+
+        window.addEventListener("touchstart", flap);
+        window.addEventListener("mousedown", flap);
+
+        update();
+    </script>
+</body>
+
+</html>
