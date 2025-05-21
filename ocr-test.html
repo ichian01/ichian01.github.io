@@ -22,8 +22,6 @@
             object-fit: cover;
             object-position: top center;
             aspect-ratio: 4 / 3;
-            clip-path: inset(0 0 50% 0);
-            /* crops bottom half */
             border: 1px solid #ccc;
             border-radius: 8px;
         }
@@ -86,6 +84,7 @@
         <button id="flashBtn">Toggle Flashlight</button>
         <button id="toggleOcrBtn">Start OCR</button>
         <button id="copyBtn">Copy</button>
+        <button id="opencvToggleBtn">Use OpenCV: On</button>
     </div>
 
     <script>
@@ -100,6 +99,15 @@
         let ocrInterval = null;
         let videoTrack = null;
         let flashOn = false;
+
+        let useOpenCV = true;
+
+        const opencvToggleBtn = document.getElementById('opencvToggleBtn');
+        opencvToggleBtn.addEventListener('click', () => {
+            useOpenCV = !useOpenCV;
+            opencvToggleBtn.textContent = `Use OpenCV: ${useOpenCV ? 'On' : 'Off'}`;
+        });
+
 
         async function startCamera() {
             try {
@@ -145,45 +153,40 @@
 
             // Draw video frame to canvas
             ctx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+            await new Promise(resolve => setTimeout(resolve, 50)); // allow drawImage to settle
 
-            // === OpenCV processing ===
-            await new Promise(resolve => setTimeout(resolve, 50)); // after drawImage
-            const src = cv.imread(canvas);
+            if (useOpenCV) {
+                const src = cv.imread(canvas);
+                let gray = new cv.Mat();
+                let dst = new cv.Mat();
 
-            let gray = new cv.Mat();
-            let dst = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+                cv.adaptiveThreshold(gray, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+                if (dst.cols !== canvas.width || dst.rows !== canvas.height) {
+                    cv.resize(dst, dst, new cv.Size(canvas.width, canvas.height));
+                }
 
-            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-            cv.adaptiveThreshold(
-                gray,
-                dst,
-                255,
-                cv.ADAPTIVE_THRESH_GAUSSIAN_C, // better for lighting variation
-                cv.THRESH_BINARY,
-                11,
-                2
-            );
+                // Display processed image
+                cv.imshow('processedCanvas', dst);
 
-            if (dst.cols !== canvas.width || dst.rows !== canvas.height) {
-                cv.resize(dst, dst, new cv.Size(canvas.width, canvas.height));
+                // Push to canvas for Tesseract
+                const imgData = ctx.createImageData(canvas.width, canvas.height);
+                const pixelCount = Math.min(dst.data.length, canvas.width * canvas.height);
+                for (let i = 0; i < pixelCount; i++) {
+                    const val = dst.data[i];
+                    imgData.data[i * 4] = val;
+                    imgData.data[i * 4 + 1] = val;
+                    imgData.data[i * 4 + 2] = val;
+                    imgData.data[i * 4 + 3] = 255;
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                src.delete(); gray.delete(); dst.delete();
+            } else {
+                // Just mirror raw image into processed canvas
+                const processedCtx = document.getElementById('processedCanvas').getContext('2d');
+                processedCtx.drawImage(canvas, 0, 0);
             }
-
-            // Display processed image
-            cv.imshow('processedCanvas', dst);
-
-            // Push thresholded image back into canvas for Tesseract
-            const imgData = ctx.createImageData(canvas.width, canvas.height);
-
-            const pixelCount = Math.min(dst.data.length, canvas.width * canvas.height);
-            for (let i = 0; i < pixelCount; i++) {
-                const val = dst.data[i];
-                imgData.data[i * 4] = val;
-                imgData.data[i * 4 + 1] = val;
-                imgData.data[i * 4 + 2] = val;
-                imgData.data[i * 4 + 3] = 255;
-            }
-
-            ctx.putImageData(imgData, 0, 0);
 
             // OCR
             const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
@@ -192,10 +195,6 @@
             if (text.trim()) {
                 output.value = text.trim();
             }
-
-
-            // Clean up
-            src.delete(); gray.delete(); dst.delete();
         }
 
 
