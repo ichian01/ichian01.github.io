@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live OCR</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -55,7 +55,7 @@
             background-color: #0056b3;
         }
 
-        #canvas {
+        #internalCanvas {
             display: none;
         }
 
@@ -75,9 +75,9 @@
     <h1>Live OCR Scanner</h1>
     <div id="videoWrapper" style="position: relative; display: inline-block;">
         <video id="video" autoplay playsinline></video>
-      </div>
-    <canvas id="canvas" width="480" height="200"></canvas>
+    </div>
     <canvas id="processedCanvas" width="480" height="200"></canvas>
+    <canvas id="internalCanvas" width="480" height="200"></canvas>
     <textarea id="output" placeholder="Recognized text appears here..."></textarea>
     <div class="buttons">
         <button id="flashBtn">Toggle Flashlight</button>
@@ -88,53 +88,24 @@
 
     <script>
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const internalCanvas = document.getElementById('internalCanvas');
+        const processedCtx = processedCanvas.getContext('2d');
+        const internalCtx = internalCanvas.getContext('2d');
         const output = document.getElementById('output');
         const toggleOcrBtn = document.getElementById('toggleOcrBtn');
-        const copyBtn = document.getElementById('copyBtn');
-        const ctx = canvas.getContext('2d');
+
         const intervalMs = 3000;
 
         let ocrInterval = null;
         let videoTrack = null;
         let flashOn = false;
-
         let useOpenCV = true;
-
-        const opencvToggleBtn = document.getElementById('opencvToggleBtn');
-        opencvToggleBtn.addEventListener('click', () => {
-            useOpenCV = !useOpenCV;
-            opencvToggleBtn.textContent = `Use OpenCV: ${useOpenCV ? 'On' : 'Off'}`;
-        });
-
-
-        async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
-                video.srcObject = stream;
-                videoTrack = stream.getVideoTracks()[0];
-
-                // Wait until video has dimensions
-                await new Promise(resolve => {
-                    video.onloadedmetadata = () => resolve();
-                });
-
-                createOverlay(); // ✅
-            } catch (err) {
-                alert('Camera access denied: ' + err.message);
-            }
-        }
 
         function getCropRect() {
             const cropWidth = 480;
             const cropHeight = 200;
-            const sx = (video.videoWidth - cropWidth) * 0.25;
+            const sx = (video.videoWidth - cropWidth) * 0.50;
             const sy = (video.videoHeight - cropHeight) * 0.50;
 
             return { sx, sy, cropWidth, cropHeight };
@@ -163,30 +134,69 @@
 
         }
 
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                video.srcObject = stream;
+                videoTrack = stream.getVideoTracks()[0];
+
+                // Wait until video has dimensions
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => resolve();
+                });
+
+                createOverlay(); // ✅
+            } catch (err) {
+                alert('Camera access denied: ' + err.message);
+            }
+        }
 
         async function performOCR() {
             const { sx, sy, cropWidth, cropHeight } = getCropRect();
+            createOverlay();
 
-            ctx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+            //Draw cropped image onto internal canvas
+            internalCtx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, internalCanvas.width, internalCanvas.height);
             await new Promise(resolve => setTimeout(resolve, 50));
 
             if (useOpenCV) {
-                const src = cv.imread(canvas);
+                //cv is a global object exposed by the OpenCV.js library
+                if (!cv || typeof cv.imread !== 'function') {
+                    // OpenCV not ready yet — wait
+                    await new Promise(resolve => {
+                        const check = () => {
+                            if (cv && typeof cv.imread === 'function') {
+                                resolve();
+                            } else {
+                                setTimeout(check, 50);
+                            }
+                        };
+                        check();
+                    });
+                }
+
+                const src = cv.imread(internalCanvas);
                 let gray = new cv.Mat();
                 let dst = new cv.Mat();
 
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
                 cv.adaptiveThreshold(gray, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
-                if (dst.cols !== canvas.width || dst.rows !== canvas.height) {
-                    cv.resize(dst, dst, new cv.Size(canvas.width, canvas.height));
+                if (dst.cols !== internalCanvas.width || dst.rows !== internalCanvas.height) {
+                    cv.resize(dst, dst, new cv.Size(internalCanvas.width, internalCanvas.height));
                 }
 
                 // Display processed image
                 cv.imshow('processedCanvas', dst);
 
                 // Push to canvas for Tesseract
-                const imgData = ctx.createImageData(canvas.width, canvas.height);
-                const pixelCount = Math.min(dst.data.length, canvas.width * canvas.height);
+                const imgData = processedCtx.createImageData(processedCanvas.width, processedCanvas.height);
+                const pixelCount = Math.min(dst.data.length, processedCanvas.width * processedCanvas.height);
                 for (let i = 0; i < pixelCount; i++) {
                     const val = dst.data[i];
                     imgData.data[i * 4] = val;
@@ -194,23 +204,31 @@
                     imgData.data[i * 4 + 2] = val;
                     imgData.data[i * 4 + 3] = 255;
                 }
-                ctx.putImageData(imgData, 0, 0);
+                processedCtx.putImageData(imgData, 0, 0);
 
                 src.delete(); gray.delete(); dst.delete();
             } else {
-                // Just mirror raw image into processed canvas
-                const processedCtx = document.getElementById('processedCanvas').getContext('2d');
-                processedCtx.drawImage(canvas, 0, 0);
+                // Binarization
+                const imageData = internalCtx.getImageData(0, 0, internalCanvas.width, internalCanvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    const val = avg > 180 ? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = val;
+                }
+                processedCtx.putImageData(imageData, 0, 0);
+
             }
 
             // OCR
-            const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
+            const { data: { text } } = await Tesseract.recognize(processedCanvas, 'eng', {
                 langPath: 'https://tessdata.projectnaptha.com/4.0.0_best',
             });
             if (text.trim()) {
                 output.value = text.trim();
             }
         }
+
 
 
         async function toggleOCR() {
@@ -241,7 +259,15 @@
             }
         }
 
+        //ADD EVENT LISTENERS       
 
+        const opencvToggleBtn = document.getElementById('opencvToggleBtn');
+        opencvToggleBtn.addEventListener('click', () => {
+            useOpenCV = !useOpenCV;
+            opencvToggleBtn.textContent = `Use OpenCV: ${useOpenCV ? 'On' : 'Off'}`;
+        });
+
+        const copyBtn = document.getElementById('copyBtn');
         copyBtn.addEventListener('click', () => {
             const originalText = output.value;
             navigator.clipboard.writeText(originalText)
@@ -256,7 +282,8 @@
                 });
         });
 
-        document.getElementById('flashBtn').addEventListener('click', async () => {
+        const flashBtn = document.getElementById('flashBtn');
+        flashBtn.addEventListener('click', async () => {
             if (!videoTrack) return alert('Camera not initialized');
 
             const capabilities = videoTrack.getCapabilities?.();
@@ -270,8 +297,9 @@
             }
         });
 
+
         toggleOcrBtn.addEventListener('click', toggleOCR);
-        window.onload = startCamera;
+
     </script>
 </body>
 
