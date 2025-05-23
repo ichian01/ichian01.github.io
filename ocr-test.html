@@ -169,7 +169,9 @@
         }
 
         #canvas {
-            display: none;
+            display: block;
+            width: 100%;
+            height: 100%;
         }
 
         .loading {
@@ -355,6 +357,8 @@
                     let processedCanvas = tempCanvas;
                     if (typeof cv !== 'undefined') {
                         processedCanvas = this.preprocessImage(tempCanvas);
+                        // Draw processed canvas back to main canvas
+                        this.ctx.drawImage(processedCanvas, 0, 0, this.canvas.width, this.canvas.height);
                     }
 
                     // Perform OCR
