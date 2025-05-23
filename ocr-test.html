@@ -274,7 +274,7 @@
                     });
 
                 } catch (error) {
-                    this.result.textContent = 'Camera initialization failed: ' + error;
+                    this.result.textContent += 'Camera initialization failed: ' + error;
                     console.error('Camera initialization failed:', error);
                     this.setStatus('Camera access denied or not available', 'error');
                 }
@@ -285,7 +285,7 @@
                     this.worker = await Tesseract.createWorker('eng');
                     console.log('Tesseract initialized');
                 } catch (error) {
-                    this.result.textContent = 'Tesseract initialization failed: ' + error;
+                    this.result.textContent += 'Tesseract initialization failed: ' + error;
                     console.error('Tesseract initialization failed:', error);
                     this.setStatus('OCR initialization failed', 'error');
                 }
@@ -368,7 +368,7 @@
                     this.performOCR(processedCanvas);
 
                 } catch (error) {
-                    this.result.textContent = 'Capture and process error: ' + error;
+                    this.result.textContent += 'Capture and process error: ' + error;
                     console.error('Capture and process error:', error);
                     this.setStatus('Processing error', 'error');
                 }
@@ -402,7 +402,7 @@
 
                     return outputCanvas;
                 } catch (error) {
-                    this.result.textContent = 'OpenCV preprocessing error: ' + error;
+                    this.result.textContent += 'OpenCV preprocessing error: ' + error;
                     console.error('OpenCV preprocessing error:', error);
                     return canvas; // Return original if preprocessing fails
                 }
@@ -427,7 +427,7 @@
                     }
 
                 } catch (error) {
-                    this.result.textContent = 'OCR error: ' + error;
+                    this.result.textContent += 'OCR error: ' + error;
                     console.error('OCR error:', error);
                     this.setStatus('OCR processing error', 'error');
                 }
