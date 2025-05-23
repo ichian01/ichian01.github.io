@@ -414,7 +414,7 @@
                 try {
                     this.setStatus('Processing text...', 'processing');
 
-                    const { data: { text } } = await this.worker.recognize(canvas);
+                    const { data: { text } } = await this.worker.recognize(canvas,{rotateAuto: true}, {imageColor: true, imageGrey: true, imageBinary: true});
 
                     if (this.isOcrRunning) {
                         const cleanText = text.trim();
