@@ -274,6 +274,7 @@
                     });
 
                 } catch (error) {
+                    this.result.textContent = 'Camera initialization failed: ' + error;
                     console.error('Camera initialization failed:', error);
                     this.setStatus('Camera access denied or not available', 'error');
                 }
@@ -284,6 +285,7 @@
                     this.worker = await Tesseract.createWorker('eng');
                     console.log('Tesseract initialized');
                 } catch (error) {
+                    this.result.textContent = 'Tesseract initialization failed: ' + error;
                     console.error('Tesseract initialization failed:', error);
                     this.setStatus('OCR initialization failed', 'error');
                 }
@@ -334,6 +336,7 @@
                 if (!this.isOcrRunning) return;
 
                 try {
+
                     // Draw video frame to canvas
                     this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
 
@@ -365,6 +368,7 @@
                     this.performOCR(processedCanvas);
 
                 } catch (error) {
+                    this.result.textContent = 'Capture and process error: ' + error;
                     console.error('Capture and process error:', error);
                     this.setStatus('Processing error', 'error');
                 }
@@ -398,6 +402,7 @@
 
                     return outputCanvas;
                 } catch (error) {
+                    this.result.textContent = 'OpenCV preprocessing error: ' + error;
                     console.error('OpenCV preprocessing error:', error);
                     return canvas; // Return original if preprocessing fails
                 }
@@ -422,6 +427,7 @@
                     }
 
                 } catch (error) {
+                    this.result.textContent = 'OCR error: ' + error;
                     console.error('OCR error:', error);
                     this.setStatus('OCR processing error', 'error');
                 }
@@ -448,6 +454,7 @@
                         button.disabled = true;
                     }
                 } catch (error) {
+                    this.result.textContent = 'Flash toggle error: ' + error;
                     console.error('Flash toggle error:', error);
                     this.setStatus('Flash control failed', 'error');
                 }
@@ -474,6 +481,7 @@
                         }
                     }, 2000);
                 } catch (error) {
+                    this.result.textContent = 'Copy to clipboard failed: ' + error;
                     console.error('Copy to clipboard failed:', error);
                     this.setStatus('Copy failed', 'error');
                 }
