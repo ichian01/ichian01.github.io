@@ -212,7 +212,7 @@
         <div id="status" class="status"></div>
 
         <textarea id="result" placeholder="Recognized text will appear here..." readonly></textarea>
-
+        <div id="debug" class="debug"></div>
         <canvas id="canvas"></canvas>
     </div>
 
@@ -224,6 +224,7 @@
                 this.ctx = this.canvas.getContext('2d');
                 this.result = document.getElementById('result');
                 this.status = document.getElementById('status');
+                this.debug = document.getElementById('debug');
 
                 this.stream = null;
                 this.track = null;
@@ -274,9 +275,9 @@
                     });
 
                 } catch (error) {
-                    this.result.textContent += 'Camera initialization failed: ' + error;
                     console.error('Camera initialization failed:', error);
                     this.setStatus('Camera access denied or not available', 'error');
+                    this.debug.textContent += 'Camera initialization failed: ' + error;
                 }
             }
 
@@ -285,9 +286,10 @@
                     this.worker = await Tesseract.createWorker('eng');
                     console.log('Tesseract initialized');
                 } catch (error) {
-                    this.result.textContent += 'Tesseract initialization failed: ' + error;
+
                     console.error('Tesseract initialization failed:', error);
                     this.setStatus('OCR initialization failed', 'error');
+                    this.debug.textContent += 'Tesseract initialization failed: ' + error;
                 }
             }
 
@@ -368,9 +370,9 @@
                     this.performOCR(processedCanvas);
 
                 } catch (error) {
-                    this.result.textContent += 'Capture and process error: ' + error;
                     console.error('Capture and process error:', error);
                     this.setStatus('Processing error', 'error');
+                    this.debug.textContent += 'Capture and process error: ' + error;
                 }
             }
 
@@ -402,8 +404,8 @@
 
                     return outputCanvas;
                 } catch (error) {
-                    this.result.textContent += 'OpenCV preprocessing error: ' + error;
                     console.error('OpenCV preprocessing error:', error);
+                    this.debug.textContent += 'OpenCV preprocessing error: ' + error;
                     return canvas; // Return original if preprocessing fails
                 }
             }
@@ -414,7 +416,7 @@
                 try {
                     this.setStatus('Processing text...', 'processing');
 
-                    const { data: { text } } = await this.worker.recognize(canvas,{rotateAuto: true}, {imageColor: true, imageGrey: true, imageBinary: true});
+                    const { data: { text } } = await this.worker.recognize(canvas, { rotateAuto: true }, { imageColor: true, imageGrey: true, imageBinary: true });
 
                     if (this.isOcrRunning) {
                         const cleanText = text.trim();
@@ -427,9 +429,9 @@
                     }
 
                 } catch (error) {
-                    this.result.textContent += 'OCR error: ' + error;
                     console.error('OCR error:', error);
                     this.setStatus('OCR processing error', 'error');
+                    this.debug.textContent += 'OCR error: ' + error;
                 }
             }
 
@@ -454,9 +456,9 @@
                         button.disabled = true;
                     }
                 } catch (error) {
-                    this.result.textContent = 'Flash toggle error: ' + error;
                     console.error('Flash toggle error:', error);
                     this.setStatus('Flash control failed', 'error');
+                    this.debug.textContent += 'Flash toggle error: ' + error;
                 }
             }
 
@@ -481,15 +483,16 @@
                         }
                     }, 2000);
                 } catch (error) {
-                    this.result.textContent = 'Copy to clipboard failed: ' + error;
                     console.error('Copy to clipboard failed:', error);
                     this.setStatus('Copy failed', 'error');
+                    this.debug.textContent += 'Copy to clipboard failed: ' + error;
                 }
             }
 
             setStatus(message, type) {
                 this.status.textContent = message;
                 this.status.className = `status ${type}`;
+                this.debug.textContent += message + '\n';
             }
         }
 
