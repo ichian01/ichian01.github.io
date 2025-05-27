@@ -96,9 +96,9 @@
                 super(x, y);
                 this.angle = 0;
                 this.radius = 15;
-                this.rotationSpeed = 0.1;
-                this.thrustPower = 0.5;
-                this.maxSpeed = 10;
+                this.rotationSpeed = 0.11;
+                this.thrustPower = 0.25;
+                this.maxSpeed = 8;
                 this.friction = 0.99;
             }
 
@@ -144,7 +144,7 @@
         class Bullet extends GameObject {
             constructor(x, y, angle) {
                 super(x, y);
-                this.velocity = Vector.fromAngle(angle, 8);
+                this.velocity = Vector.fromAngle(angle, 11);
                 this.radius = 2;
                 this.life = 60;
             }
@@ -384,8 +384,8 @@
                             { x: 120, y: H - 80 },
                             { x: 120, y: H - 40 }
                         ], { x1: 110, x2: 160, y1: H - 90, y2: H - 30 });
-                        this.controls.thrust = new Button(90, H - 60, 30, "↑");
-                        this.controls.reverseThrust = new Button(90, H - 120, 30, "↓");
+                        this.controls.thrust = new Button(90, H - 120, 25, "↑");
+                        this.controls.reverseThrust = new Button(90, H - 60, 25, "↓");
                     }
                 };
             }
