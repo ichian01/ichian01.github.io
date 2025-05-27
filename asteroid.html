@@ -96,9 +96,9 @@
                 super(x, y);
                 this.angle = 0;
                 this.radius = 15;
-                this.rotationSpeed = 0.11;
-                this.thrustPower = 0.3;
-                this.maxSpeed = 8;
+                this.rotationSpeed = 0.1;
+                this.thrustPower = 0.5;
+                this.maxSpeed = 10;
                 this.friction = 0.99;
             }
 
@@ -144,7 +144,7 @@
         class Bullet extends GameObject {
             constructor(x, y, angle) {
                 super(x, y);
-                this.velocity = Vector.fromAngle(angle, 11);
+                this.velocity = Vector.fromAngle(angle, 8);
                 this.radius = 2;
                 this.life = 60;
             }
@@ -347,7 +347,7 @@
                 this.controls = this.createControls();
                 this.inputManager = new InputManager();
                 this.canFire = true;
-                this.fireDelay = 200; // milliseconds between shots
+                this.fireDelay = 250; // milliseconds between shots
                 this.lastFireTime = 0;
                 this.score = 0;
                 this.init();
@@ -384,21 +384,18 @@
                             { x: 120, y: H - 80 },
                             { x: 120, y: H - 40 }
                         ], { x1: 110, x2: 160, y1: H - 90, y2: H - 30 });
-                        this.controls.reverseThrust = new Button(90, H - 60, 30, "↓");
-                        this.controls.thrust = new Button(90, H - 120, 30, "↑");
+                        this.controls.thrust = new Button(90, H - 60, 30, "↑");
+                        this.controls.reverseThrust = new Button(90, H - 120, 30, "↓");
                     }
                 };
             }
 
             resizeCanvas() {
-                const dpr = window.devicePixelRatio || 1;
                 const width = window.innerWidth;
                 const height = window.innerHeight;
 
-                this.canvas.width = width * dpr;
-                this.canvas.height = height * dpr;
-                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-                this.ctx.scale(dpr, dpr);
+                this.canvas.width = width;
+                this.canvas.height = height;
 
                 // Update control positions
                 this.controls.update(width, height);
@@ -424,8 +421,8 @@
             }
 
             reset() {
-                const W = this.canvas.width / (window.devicePixelRatio || 1);
-                const H = this.canvas.height / (window.devicePixelRatio || 1);
+                const W = this.canvas.width;
+                const H = this.canvas.height;
 
                 this.ship = new Ship(W / 2, H / 2);
                 this.bullets = [];
@@ -551,8 +548,8 @@
                 // Check if all asteroids are destroyed
                 if (this.asteroids.length === 0) {
                     // Spawn new wave with more asteroids
-                    const W = this.canvas.width / (window.devicePixelRatio || 1);
-                    const H = this.canvas.height / (window.devicePixelRatio || 1);
+                    const W = this.canvas.width;
+                    const H = this.canvas.height;
                     for (let i = 0; i < 7; i++) {
                         this.asteroids.push(Asteroid.createRandom({ width: W, height: H }));
                     }
@@ -584,10 +581,7 @@
             }
 
             draw() {
-                const W = this.canvas.width / (window.devicePixelRatio || 1);
-                const H = this.canvas.height / (window.devicePixelRatio || 1);
-
-                this.ctx.clearRect(0, 0, W, H);
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
                 // Draw game objects
                 this.ship.draw(this.ctx);
