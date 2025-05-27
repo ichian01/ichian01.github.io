@@ -146,7 +146,7 @@
                 super(x, y);
                 this.velocity = Vector.fromAngle(angle, 11);
                 this.radius = 2;
-                this.life = 60;
+                this.life = 55;
             }
 
             update(canvas) {
@@ -420,8 +420,8 @@
                             { x: 120, y: H - 80 },
                             { x: 120, y: H - 40 }
                         ], { x1: 110, x2: 160, y1: H - 90, y2: H - 30 });
-                        this.controls.thrust = new Button(90, H - 60, 30, "↑");
-                        this.controls.reverseThrust = new Button(90, H - 120, 30, "↓");
+                        this.controls.thrust = new Button(90, H - 120, 30, "↑");
+                        this.controls.reverseThrust = new Button(90, H - 60, 30, "↓");
                     }
                 };
             }
