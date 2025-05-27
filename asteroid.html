@@ -312,6 +312,13 @@
         class InputManager {
             constructor() {
                 this.keys = {};
+                this.touches = {
+                    left: false,
+                    right: false,
+                    thrust: false,
+                    reverseThrust: false,
+                    fire: false
+                };
                 this.setupKeyboardListeners();
             }
 
@@ -332,6 +339,20 @@
             isKeyPressed(key) {
                 return this.keys[key] || false;
             }
+
+            setTouch(control, pressed) {
+                this.touches[control] = pressed;
+            }
+
+            isTouchPressed(control) {
+                return this.touches[control] || false;
+            }
+
+            clearAllTouches() {
+                for (let key in this.touches) {
+                    this.touches[key] = false;
+                }
+            }
         }
 
         // Game class
@@ -347,7 +368,7 @@
                 this.controls = this.createControls();
                 this.inputManager = new InputManager();
                 this.canFire = true;
-                this.fireDelay = 250; // milliseconds between shots
+                this.fireDelay = 200; // milliseconds between shots
                 this.lastFireTime = 0;
                 this.score = 0;
                 this.init();
@@ -356,11 +377,26 @@
             init() {
                 this.resizeCanvas();
                 window.addEventListener("resize", () => this.resizeCanvas());
-                this.canvas.addEventListener("click", (e) => this.handleTouch(e));
+                
+                // Touch event listeners
                 this.canvas.addEventListener("touchstart", (e) => {
                     e.preventDefault();
-                    this.handleTouch(e.touches[0]);
+                    this.handleTouchStart(e);
                 }, { passive: false });
+                
+                this.canvas.addEventListener("touchmove", (e) => {
+                    e.preventDefault();
+                    this.handleTouchMove(e);
+                }, { passive: false });
+                
+                this.canvas.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    this.handleTouchEnd(e);
+                }, { passive: false });
+                
+                // Mouse events for desktop
+                this.canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e));
 
                 this.showStartScreen();
             }
@@ -384,8 +420,8 @@
                             { x: 120, y: H - 80 },
                             { x: 120, y: H - 40 }
                         ], { x1: 110, x2: 160, y1: H - 90, y2: H - 30 });
-                        this.controls.thrust = new Button(90, H - 120, 25, "↑");
-                        this.controls.reverseThrust = new Button(90, H - 60, 25, "↓");
+                        this.controls.thrust = new Button(90, H - 60, 30, "↑");
+                        this.controls.reverseThrust = new Button(90, H - 120, 30, "↓");
                     }
                 };
             }
@@ -451,26 +487,66 @@
                 }
             }
 
-            handleTouch(e) {
-                const x = e.clientX || e.x;
-                const y = e.clientY || e.y;
-
+            handleTouchStart(e) {
                 if (!this.isRunning) {
                     this.reset();
                     return;
                 }
 
-                // Check controls
+                for (let touch of e.touches) {
+                    this.checkControlsPressed(touch.clientX, touch.clientY, true);
+                }
+            }
+
+            handleTouchMove(e) {
+                if (!this.isRunning) return;
+                
+                // Clear all touches first
+                this.inputManager.clearAllTouches();
+                
+                // Then check which controls are currently touched
+                for (let touch of e.touches) {
+                    this.checkControlsPressed(touch.clientX, touch.clientY, true);
+                }
+            }
+
+            handleTouchEnd(e) {
+                if (!this.isRunning) return;
+                
+                // Clear all touches and recheck remaining touches
+                this.inputManager.clearAllTouches();
+                
+                for (let touch of e.touches) {
+                    this.checkControlsPressed(touch.clientX, touch.clientY, true);
+                }
+            }
+
+            handleMouseDown(e) {
+                if (!this.isRunning) {
+                    this.reset();
+                    return;
+                }
+                
+                this.checkControlsPressed(e.clientX, e.clientY, true);
+            }
+
+            handleMouseUp(e) {
+                if (!this.isRunning) return;
+                this.inputManager.clearAllTouches();
+            }
+
+            checkControlsPressed(x, y, pressed) {
+                // Check each control
                 if (this.controls.fire.contains(x, y)) {
-                    this.fireBullet();
+                    this.inputManager.setTouch('fire', pressed);
                 } else if (this.controls.left.contains(x, y)) {
-                    this.ship.rotate(-1);
+                    this.inputManager.setTouch('left', pressed);
                 } else if (this.controls.right.contains(x, y)) {
-                    this.ship.rotate(1);
+                    this.inputManager.setTouch('right', pressed);
                 } else if (this.controls.thrust.contains(x, y)) {
-                    this.ship.thrust();
+                    this.inputManager.setTouch('thrust', pressed);
                 } else if (this.controls.reverseThrust.contains(x, y)) {
-                    this.ship.thrust(true);
+                    this.inputManager.setTouch('reverseThrust', pressed);
                 }
             }
 
@@ -483,26 +559,26 @@
                     return;
                 }
 
-                // Rotation
-                if (this.inputManager.isKeyPressed('a')) {
+                // Rotation - keyboard or touch
+                if (this.inputManager.isKeyPressed('a') || this.inputManager.isTouchPressed('left')) {
                     this.ship.rotate(-1);
                 }
-                if (this.inputManager.isKeyPressed('d')) {
+                if (this.inputManager.isKeyPressed('d') || this.inputManager.isTouchPressed('right')) {
                     this.ship.rotate(1);
                 }
 
-                // Thrust
-                if (this.inputManager.isKeyPressed('w')) {
+                // Thrust - keyboard or touch
+                if (this.inputManager.isKeyPressed('w') || this.inputManager.isTouchPressed('thrust')) {
                     this.ship.thrust();
                 }
 
-                // Reverse thrust
-                if (this.inputManager.isKeyPressed('s')) {
+                // Reverse thrust - keyboard or touch
+                if (this.inputManager.isKeyPressed('s') || this.inputManager.isTouchPressed('reverseThrust')) {
                     this.ship.thrust(true);
                 }
 
-                // Fire
-                if (this.inputManager.isKeyPressed(' ')) {
+                // Fire - keyboard or touch
+                if (this.inputManager.isKeyPressed(' ') || this.inputManager.isTouchPressed('fire')) {
                     this.fireBullet();
                 }
             }
