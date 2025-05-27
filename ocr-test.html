@@ -375,11 +375,25 @@
                         throw new Error('Tesseract library not loaded');
                     }
 
-                    this.worker = await Tesseract.createWorker('eng');
-                    
+                    // Create worker with explicit options
+                    this.worker = await Tesseract.createWorker('eng', 1, {
+                        logger: m => this.debugLog(`Tesseract: ${m.status} - ${m.progress * 100}%`)
+                    });
+
                     if (!this.worker) {
                         throw new Error('Failed to create Tesseract worker');
                     }
+
+                    // Initialize the worker properly
+                    await this.worker.loadLanguage('eng');
+                    await this.worker.initialize('eng');
+                    
+                    // Set parameters for better performance and stability
+                    await this.worker.setParameters({
+                        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+                        tessedit_ocr_engine_mode: Tesseract.OEM.TESSERACT_LSTM_COMBINED,
+                        preserve_interword_spaces: '1'
+                    });
 
                     this.isTesseractReady = true;
                     this.debugLog('Tesseract initialized successfully');
@@ -388,7 +402,8 @@
                     console.error('Tesseract initialization failed:', error);
                     this.setStatus('OCR initialization failed', 'error');
                     this.debugLog('Tesseract initialization failed: ' + error.toString());
-                    throw error;
+                    // Don't throw error, allow app to continue without OCR
+                    this.isTesseractReady = false;
                 }
             }
 
@@ -554,7 +569,7 @@
             }
 
             async performOCR(canvas) {
-                if (!this.worker || !this.isOcrRunning || !canvas) {
+                if (!this.worker || !this.isOcrRunning || !canvas || !this.isTesseractReady) {
                     this.debugLog('OCR skipped - worker or canvas not ready');
                     return;
                 }
@@ -563,21 +578,16 @@
                     this.setStatus('Processing text...', 'processing');
                     this.debugLog('Starting OCR recognition...');
 
-                    const options = {
-                        rotateAuto: true,
-                        // Add additional options for better accuracy
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]{}"\'-+= \n'
-                    };
-
-                    const { data: { text, confidence } } = await this.worker.recognize(canvas, options);
+                    // Use simpler recognize call to avoid parameter issues
+                    const { data: { text, confidence } } = await this.worker.recognize(canvas);
 
                     if (this.isOcrRunning) {
                         const cleanText = text ? text.trim() : '';
-                        this.debugLog(`OCR completed - confidence: ${confidence}% - text length: ${cleanText.length}`);
+                        this.debugLog(`OCR completed - confidence: ${confidence || 0}% - text length: ${cleanText.length}`);
                         
                         if (cleanText) {
                             this.result.value = cleanText;
-                            this.setStatus(`Text recognized (${Math.round(confidence)}% confidence)`, 'success');
+                            this.setStatus(`Text recognized (${Math.round(confidence || 0)}% confidence)`, 'success');
                         } else {
                             this.setStatus('No text found', 'processing');
                         }
@@ -587,6 +597,25 @@
                     console.error('OCR error:', error);
                     this.setStatus('OCR processing error', 'error');
                     this.debugLog('OCR error: ' + error.toString());
+                    
+                    // Try to reinitialize Tesseract if it failed
+                    if (error.toString().includes('SaveParameters') || error.toString().includes('null is not an object')) {
+                        this.debugLog('Attempting to reinitialize Tesseract...');
+                        this.isTesseractReady = false;
+                        this.stopOCR();
+                        
+                        // Reinitialize after a delay
+                        setTimeout(async () => {
+                            try {
+                                if (this.worker) {
+                                    await this.worker.terminate();
+                                }
+                                await this.initializeTesseract();
+                            } catch (reinitError) {
+                                this.debugLog('Tesseract reinitialize failed: ' + reinitError.toString());
+                            }
+                        }, 1000);
+                    }
                 }
             }
 
@@ -687,7 +716,7 @@
             }
 
             // Cleanup method
-            destroy() {
+            async destroy() {
                 this.stopOCR();
                 
                 if (this.stream) {
@@ -695,7 +724,11 @@
                 }
                 
                 if (this.worker) {
-                    this.worker.terminate();
+                    try {
+                        await this.worker.terminate();
+                    } catch (error) {
+                        this.debugLog('Worker termination error: ' + error.toString());
+                    }
                 }
                 
                 this.debugLog('CameraOCR destroyed');
@@ -730,9 +763,9 @@
         });
 
         // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
+        window.addEventListener('beforeunload', async () => {
             if (ocrApp) {
-                ocrApp.destroy();
+                await ocrApp.destroy();
             }
         });
     </script>
