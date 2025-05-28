@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Drop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
         * {
             margin: 0;
@@ -21,31 +20,56 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         #gameContainer {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
-            padding: 20px;
+            gap: 10px;
+            padding: 10px;
+            width: 100%;
+            max-width: 600px;
         }
 
         #gameInfo {
             display: flex;
-            gap: 30px;
-            font-size: 18px;
+            gap: 20px;
+            font-size: 16px;
+        }
+
+        #gameArea {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            width: 100%;
         }
 
         #mainCanvas {
             border: 2px solid #444;
             background-color: #000;
             touch-action: none;
+            max-width: 100%;
+            height: auto;
         }
 
-        #nextPiecesCanvas {
+        #previewArea {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .preview-box {
             border: 2px solid #444;
             background-color: #000;
+            padding: 5px;
+        }
+
+        .preview-label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-align: center;
         }
 
         .info-section {
@@ -55,23 +79,49 @@
         .info-section span {
             display: block;
             margin-top: 5px;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
         }
 
         #controls {
             text-align: center;
-            font-size: 14px;
+            font-size: 12px;
             opacity: 0.7;
         }
 
         @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+                padding-top: 20px;
+            }
+            
+            #gameContainer {
+                gap: 8px;
+                padding: 8px;
+            }
+            
             #gameInfo {
-                font-size: 16px;
+                font-size: 14px;
+                gap: 15px;
             }
             
             .info-section span {
-                font-size: 20px;
+                font-size: 18px;
+            }
+            
+            #controls {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            #gameContainer {
+                gap: 5px;
+                padding: 5px;
+            }
+            
+            #controls {
+                display: none;
             }
         }
     </style>
@@ -90,11 +140,17 @@
             </div>
         </div>
         
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
+        <div id="gameArea">
             <canvas id="mainCanvas"></canvas>
-            <div>
-                <div style="margin-bottom: 10px;">Next:</div>
-                <canvas id="nextPiecesCanvas"></canvas>
+            <div id="previewArea">
+                <div class="preview-box">
+                    <div class="preview-label">Next:</div>
+                    <canvas id="nextPiece1"></canvas>
+                </div>
+                <div class="preview-box">
+                    <div class="preview-label">Then:</div>
+                    <canvas id="nextPiece2"></canvas>
+                </div>
             </div>
         </div>
         
@@ -108,7 +164,7 @@
         // Constants
         const COLS = 10;
         const ROWS = 24;
-        const BLOCK_SIZE = 30;
+        const BLOCK_SIZE = Math.min(30, Math.floor((window.innerWidth - 120) / COLS));
         const LINES_PER_LEVEL = 20;
         
         // Colors for pieces
@@ -347,15 +403,19 @@
 
         // Renderer class
         class Renderer {
-            constructor(mainCanvas, nextCanvas) {
+            constructor(mainCanvas, nextCanvas1, nextCanvas2) {
                 this.mainCtx = mainCanvas.getContext('2d');
-                this.nextCtx = nextCanvas.getContext('2d');
+                this.nextCtx1 = nextCanvas1.getContext('2d');
+                this.nextCtx2 = nextCanvas2.getContext('2d');
                 
                 mainCanvas.width = COLS * BLOCK_SIZE;
                 mainCanvas.height = ROWS * BLOCK_SIZE;
                 
-                nextCanvas.width = 4 * BLOCK_SIZE;
-                nextCanvas.height = 8 * BLOCK_SIZE;
+                nextCanvas1.width = 4 * BLOCK_SIZE * 0.7;
+                nextCanvas1.height = 4 * BLOCK_SIZE * 0.7;
+                
+                nextCanvas2.width = 4 * BLOCK_SIZE * 0.7;
+                nextCanvas2.height = 4 * BLOCK_SIZE * 0.7;
             }
 
             drawBlock(ctx, x, y, color, size = BLOCK_SIZE) {
@@ -439,23 +499,54 @@
             }
 
             drawNextPieces(nextPieces) {
-                this.nextCtx.fillStyle = '#000';
-                this.nextCtx.fillRect(0, 0, this.nextCtx.canvas.width, this.nextCtx.canvas.height);
+                // Clear both preview canvases
+                this.nextCtx1.fillStyle = '#000';
+                this.nextCtx1.fillRect(0, 0, this.nextCtx1.canvas.width, this.nextCtx1.canvas.height);
+                this.nextCtx2.fillStyle = '#000';
+                this.nextCtx2.fillRect(0, 0, this.nextCtx2.canvas.width, this.nextCtx2.canvas.height);
                 
-                let yOffset = 0;
-                for (let i = 0; i < 2 && i < nextPieces.length; i++) {
-                    const piece = new Tetromino(nextPieces[i], 0, 0);
-                    const blockSize = 25;
-                    
-                    for (let y = 0; y < piece.shape.length; y++) {
-                        for (let x = 0; x < piece.shape[y].length; x++) {
-                            if (piece.shape[y][x]) {
-                                this.drawBlock(this.nextCtx, x + 0.5, y + yOffset + 0.5, piece.color, blockSize);
-                            }
+                // Draw first next piece
+                if (nextPieces.length > 0) {
+                    this.drawPieceInCanvas(this.nextCtx1, nextPieces[0]);
+                }
+                
+                // Draw second next piece
+                if (nextPieces.length > 1) {
+                    this.drawPieceInCanvas(this.nextCtx2, nextPieces[1]);
+                }
+            }
+
+            drawPieceInCanvas(ctx, pieceType) {
+                const piece = new Tetromino(pieceType, 0, 0);
+                const blockSize = BLOCK_SIZE * 0.7;
+                const canvasSize = ctx.canvas.width;
+                
+                // Calculate centering offset
+                const pieceWidth = piece.shape[0].length * blockSize;
+                const pieceHeight = piece.shape.length * blockSize;
+                const offsetX = (canvasSize - pieceWidth) / 2;
+                const offsetY = (canvasSize - pieceHeight) / 2;
+                
+                for (let y = 0; y < piece.shape.length; y++) {
+                    for (let x = 0; x < piece.shape[y].length; x++) {
+                        if (piece.shape[y][x]) {
+                            ctx.fillStyle = piece.color;
+                            ctx.fillRect(
+                                offsetX + x * blockSize, 
+                                offsetY + y * blockSize, 
+                                blockSize - 1, 
+                                blockSize - 1
+                            );
+                            
+                            ctx.strokeStyle = piece.color;
+                            ctx.strokeRect(
+                                offsetX + x * blockSize, 
+                                offsetY + y * blockSize, 
+                                blockSize - 1, 
+                                blockSize - 1
+                            );
                         }
                     }
-                    
-                    yOffset += 4;
                 }
             }
         }
@@ -562,7 +653,8 @@
                 this.board = new GameBoard();
                 this.renderer = new Renderer(
                     document.getElementById('mainCanvas'),
-                    document.getElementById('nextPiecesCanvas')
+                    document.getElementById('nextPiece1'),
+                    document.getElementById('nextPiece2')
                 );
                 this.inputHandler = new InputHandler(this.board, document.getElementById('mainCanvas'));
                 
