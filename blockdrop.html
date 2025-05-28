@@ -21,6 +21,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            height: 100vh;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
@@ -93,25 +94,29 @@
         @media (max-width: 600px) {
             body {
                 align-items: flex-start;
-                padding-top: 20px;
+                padding-top: 10px;
             }
             
             #gameContainer {
-                gap: 8px;
-                padding: 8px;
+                gap: 5px;
+                padding: 5px;
             }
             
             #gameInfo {
-                font-size: 14px;
-                gap: 15px;
+                font-size: 12px;
+                gap: 12px;
             }
             
             .info-section span {
-                font-size: 18px;
+                font-size: 16px;
+            }
+            
+            .preview-label {
+                font-size: 11px;
             }
             
             #controls {
-                font-size: 11px;
+                font-size: 10px;
             }
         }
 
@@ -156,7 +161,7 @@
         </div>
         
         <div id="controls">
-            Touch: Tap=Rotate | Swipe=Move | Swipe Down=Soft Drop | Swipe Up/Double Tap=Hard Drop<br>
+            Touch: Tap=Rotate | Swipe=Move | Swipe Down=Soft Drop | Swipe Up=Hard Drop<br>
             Keys: ←→=Move | ↑=Rotate | ↓=Soft Drop | Space=Hard Drop
         </div>
     </div>
@@ -165,7 +170,7 @@
         // Constants
         const COLS = 10;
         const ROWS = 24;
-        const BLOCK_SIZE = Math.min(30, Math.floor((window.innerWidth - 120) / COLS));
+        const BLOCK_SIZE = Math.min(25, Math.floor((window.innerHeight * 0.7) / ROWS), Math.floor((window.innerWidth - 140) / COLS));
         const LINES_PER_LEVEL = 20;
         
         // Colors for pieces
@@ -195,8 +200,8 @@
 
         // Drop weights
         const DROP_WEIGHTS = {
-            I: 0.1, T: 0.1, L: 0.1, J: 0.1, S: 0.1, Z: 0.1,
-            shortL: 0.2, shortJ: 0.2
+            I: 0.15, T: 0.1, L: 0.125, J: 0.125, S: 0.1, Z: 0.1,
+            shortL: 0.15, shortJ: 0.15
         };
 
         // Tetromino class
@@ -560,7 +565,6 @@
                 this.touchStartX = null;
                 this.touchStartY = null;
                 this.touchStartTime = null;
-                this.lastTapTime = 0;
                 
                 this.setupKeyboardControls();
                 this.setupTouchControls();
@@ -598,13 +602,6 @@
                     this.touchStartX = touch.clientX;
                     this.touchStartY = touch.clientY;
                     this.touchStartTime = Date.now();
-                    
-                    // Double tap detection
-                    const currentTime = Date.now();
-                    if (currentTime - this.lastTapTime < 300) {
-                        this.board.hardDrop();
-                    }
-                    this.lastTapTime = currentTime;
                 });
 
                 this.canvas.addEventListener('touchmove', (e) => {
