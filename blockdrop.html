@@ -280,6 +280,8 @@
                 this.lines = 0;
                 this.level = 1;
                 this.gameOver = false;
+                this.specialMessage = '';
+                this.messageTimer = 0;
                 
                 // Generate initial pieces
                 this.generateNextPieces();
@@ -475,9 +477,15 @@
 
             clearLines() {
                 let linesCleared = 0;
+                let leafLineCleared = false;
                 
                 for (let y = ROWS - 1; y >= 0; y--) {
                     if (this.grid[y].every(cell => cell !== 0)) {
+                        // Check if entire line is made of leaf blocks
+                        if (this.grid[y].every(cell => cell === 'leaf')) {
+                            leafLineCleared = true;
+                        }
+                        
                         this.grid.splice(y, 1);
                         this.grid.unshift(Array(COLS).fill(0));
                         linesCleared++;
@@ -485,11 +493,27 @@
                     }
                 }
                 
-                if (linesCleared > 0) {
+                if (leafLineCleared) {
+                    // Clear entire field
+                    this.grid = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+                    
+                    // Increment level
+                    this.level++;
+                    
+                    // Award bonus points
+                    this.score += 1000 * this.level;
+                    
+                    // Set message to display
+                    this.specialMessage = 'SUPER!';
+                    this.messageTimer = 120; // Display for 2 seconds at 60fps
+                    
+                    // Still count the lines for stats
+                    this.lines += linesCleared;
+                } else if (linesCleared > 0) {
                     this.lines += linesCleared;
                     this.level = Math.floor(this.lines / LINES_PER_LEVEL) + 1;
                     
-                    // Scoring
+                    // Normal scoring
                     const scoreMap = [0, 100, 300, 500, 800];
                     this.score += scoreMap[Math.min(linesCleared, 4)] * this.level;
                 }
@@ -576,6 +600,35 @@
                     this.mainCtx.font = '30px Arial';
                     this.mainCtx.textAlign = 'center';
                     this.mainCtx.fillText('GAME OVER', this.mainCtx.canvas.width / 2, this.mainCtx.canvas.height / 2);
+                }
+                
+                // Special message display
+                if (board.specialMessage && board.messageTimer > 0) {
+                    this.mainCtx.save();
+                    
+                    // Create gradient text effect
+                    const gradient = this.mainCtx.createLinearGradient(0, 0, this.mainCtx.canvas.width, 0);
+                    gradient.addColorStop(0, '#FFD700');
+                    gradient.addColorStop(0.5, '#FFA500');
+                    gradient.addColorStop(1, '#FFD700');
+                    
+                    this.mainCtx.fillStyle = gradient;
+                    this.mainCtx.font = 'bold 48px Arial';
+                    this.mainCtx.textAlign = 'center';
+                    this.mainCtx.shadowColor = '#000';
+                    this.mainCtx.shadowBlur = 10;
+                    
+                    // Animate the message
+                    const scale = 1 + Math.sin(board.messageTimer * 0.1) * 0.1;
+                    this.mainCtx.save();
+                    this.mainCtx.translate(this.mainCtx.canvas.width / 2, this.mainCtx.canvas.height / 2);
+                    this.mainCtx.scale(scale, scale);
+                    this.mainCtx.fillText(board.specialMessage, 0, 0);
+                    this.mainCtx.restore();
+                    
+                    this.mainCtx.restore();
+                    
+                    board.messageTimer--;
                 }
             }
 
