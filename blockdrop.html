@@ -175,56 +175,82 @@
         
         // Colors for pieces
         const COLORS = {
-            I: '#00f0f0',
-            T: '#a000f0',
-            L: '#f0a000',
-            J: '#0000f0',
-            S: '#00f000',
-            Z: '#f00000',
-            shortL: '#f0f000',
-            shortJ: '#f000f0',
+            stem: '#A8E6A2',  // Light green
+            leaf: '#4DA6FF',  // Blue
             empty: '#000'
         };
 
-        // Piece definitions
+        // Piece definitions with leaf/stem designations
         const PIECES = {
-            I: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
-            T: [[0,1,0], [1,1,1], [0,0,0]],
-            L: [[0,0,1], [1,1,1], [0,0,0]],
-            J: [[1,0,0], [1,1,1], [0,0,0]],
-            S: [[0,1,1], [1,1,0], [0,0,0]],
-            Z: [[1,1,0], [0,1,1], [0,0,0]],
-            shortL: [[1,0], [1,1]],
-            shortJ: [[1,1], [1,0]]
+            I: {
+                shape: [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]],
+                blocks: [[0,'stem',0,0], [0,'stem',0,0], [0,'stem',0,0], [0,'stem',0,0]]
+            },
+            T: {
+                shape: [[0,1,0], [0,1,1], [0,1,0]],
+                blocks: [[0,'stem',0], [0,'stem','leaf'], [0,'stem',0]]
+            },
+            L: {
+                shape: [[0,1,0], [0,1,0], [0,1,1]],
+                blocks: [[0,'stem',0], [0,'stem',0], [0,'stem','leaf']]
+            },
+            J: {
+                shape: [[0,1,0], [0,1,0], [1,1,0]],
+                blocks: [[0,'stem',0], [0,'stem',0], ['leaf','stem',0]]
+            },
+            S: {
+                shape: [[0,1,1], [1,1,0], [0,0,0]],
+                blocks: [[0,'stem','leaf'], ['leaf','stem',0], [0,0,0]]
+            },
+            Z: {
+                shape: [[1,1,0], [0,1,1], [0,0,0]],
+                blocks: [['leaf','stem',0], [0,'stem','leaf'], [0,0,0]]
+            },
+            shortL: {
+                shape: [[1,0], [1,1]],
+                blocks: [['stem',0], ['stem','leaf']]
+            },
+            shortJ: {
+                shape: [[0,1], [1,1]],
+                blocks: [[0,'stem'], ['leaf','stem']]
+            },
+            specialI: {
+                shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+                blocks: [[0,0,0,0], ['leaf','leaf','leaf','leaf'], [0,0,0,0], [0,0,0,0]],
+                breakable: true
+            }
         };
 
         // Drop weights
         const DROP_WEIGHTS = {
-            I: 0.15, T: 0.1, L: 0.125, J: 0.125, S: 0.1, Z: 0.1,
-            shortL: 0.15, shortJ: 0.15
+            I: 0.1, T: 0.1, L: 0.125, J: 0.125, S: 0.125, Z: 0.125,
+            shortL: 0.125, shortJ: 0.125, specialI: 0.05
         };
 
         // Tetromino class
         class Tetromino {
             constructor(type, x = Math.floor(COLS / 2) - 1, y = 0) {
                 this.type = type;
-                this.shape = PIECES[type];
-                this.color = COLORS[type];
+                this.shape = PIECES[type].shape;
+                this.blocks = PIECES[type].blocks;
+                this.breakable = PIECES[type].breakable || false;
                 this.x = x;
                 this.y = y;
             }
 
             rotate() {
                 const n = this.shape.length;
-                const rotated = Array(n).fill().map(() => Array(n).fill(0));
+                const rotatedShape = Array(n).fill().map(() => Array(n).fill(0));
+                const rotatedBlocks = Array(n).fill().map(() => Array(n).fill(0));
                 
                 for (let i = 0; i < n; i++) {
                     for (let j = 0; j < n; j++) {
-                        rotated[i][j] = this.shape[n - 1 - j][i];
+                        rotatedShape[i][j] = this.shape[n - 1 - j][i];
+                        rotatedBlocks[i][j] = this.blocks[n - 1 - j][i];
                     }
                 }
                 
-                return rotated;
+                return { shape: rotatedShape, blocks: rotatedBlocks };
             }
 
             getBlocks() {
@@ -232,7 +258,11 @@
                 for (let y = 0; y < this.shape.length; y++) {
                     for (let x = 0; x < this.shape[y].length; x++) {
                         if (this.shape[y][x]) {
-                            blocks.push({x: this.x + x, y: this.y + y});
+                            blocks.push({
+                                x: this.x + x, 
+                                y: this.y + y,
+                                type: this.blocks[y][x]
+                            });
                         }
                     }
                 }
@@ -322,7 +352,10 @@
                 if (!this.currentPiece) return false;
                 
                 const originalShape = this.currentPiece.shape;
-                this.currentPiece.shape = this.currentPiece.rotate();
+                const originalBlocks = this.currentPiece.blocks;
+                const rotated = this.currentPiece.rotate();
+                this.currentPiece.shape = rotated.shape;
+                this.currentPiece.blocks = rotated.blocks;
                 
                 // Try normal rotation
                 if (this.isValidPosition(this.currentPiece)) {
@@ -342,17 +375,47 @@
                 
                 // Rotation failed
                 this.currentPiece.shape = originalShape;
+                this.currentPiece.blocks = originalBlocks;
                 return false;
             }
 
             dropPiece() {
                 if (!this.currentPiece) return false;
                 
+                // Check if piece can move down normally
                 if (this.movePiece(0, 1)) {
                     return true;
                 }
                 
-                // Lock piece
+                // If it's a breakable piece (specialI), try to break it apart
+                if (this.currentPiece.breakable && this.currentPiece.type === 'specialI') {
+                    const blocks = this.currentPiece.getBlocks();
+                    let anyBlockPlaced = false;
+                    
+                    // Check each block individually
+                    for (const block of blocks) {
+                        let finalY = block.y;
+                        
+                        // Drop each block as far as it can go
+                        while (finalY + 1 < ROWS && this.grid[finalY + 1][block.x] === 0) {
+                            finalY++;
+                        }
+                        
+                        // Place the block if it moved
+                        if (finalY >= 0) {
+                            this.grid[finalY][block.x] = block.type;
+                            anyBlockPlaced = true;
+                        }
+                    }
+                    
+                    if (anyBlockPlaced) {
+                        this.clearLines();
+                        this.spawnPiece();
+                        return false;
+                    }
+                }
+                
+                // Lock piece normally
                 this.lockPiece();
                 return false;
             }
@@ -360,6 +423,36 @@
             hardDrop() {
                 if (!this.currentPiece) return;
                 
+                // For breakable pieces, handle differently
+                if (this.currentPiece.breakable && this.currentPiece.type === 'specialI') {
+                    const blocks = this.currentPiece.getBlocks();
+                    let totalDropDistance = 0;
+                    
+                    // Drop each block individually
+                    for (const block of blocks) {
+                        let finalY = block.y;
+                        
+                        // Find where this block will land
+                        while (finalY + 1 < ROWS && this.grid[finalY + 1][block.x] === 0) {
+                            finalY++;
+                            totalDropDistance++;
+                        }
+                        
+                        // Place the block
+                        if (finalY >= 0) {
+                            this.grid[finalY][block.x] = block.type;
+                        }
+                    }
+                    
+                    // Award points based on total drop distance
+                    this.score += totalDropDistance * 2;
+                    
+                    this.clearLines();
+                    this.spawnPiece();
+                    return;
+                }
+                
+                // Normal hard drop for non-breakable pieces
                 while (this.movePiece(0, 1)) {
                     this.score += 2;
                 }
@@ -372,7 +465,7 @@
                 
                 for (const block of blocks) {
                     if (block.y >= 0) {
-                        this.grid[block.y][block.x] = this.currentPiece.type;
+                        this.grid[block.y][block.x] = block.type;
                     }
                 }
                 
@@ -457,7 +550,8 @@
                     const blocks = board.currentPiece.getBlocks();
                     for (const block of blocks) {
                         if (block.y >= 0) {
-                            this.drawBlock(this.mainCtx, block.x, block.y, board.currentPiece.color);
+                            const color = COLORS[block.type];
+                            this.drawBlock(this.mainCtx, block.x, block.y, color);
                         }
                     }
                     
@@ -490,6 +584,7 @@
                 
                 const ghost = new Tetromino(board.currentPiece.type, board.currentPiece.x, board.currentPiece.y);
                 ghost.shape = board.currentPiece.shape;
+                ghost.blocks = board.currentPiece.blocks;
                 
                 while (board.isValidPosition(ghost, 0, 1)) {
                     ghost.y++;
@@ -536,7 +631,10 @@
                 for (let y = 0; y < piece.shape.length; y++) {
                     for (let x = 0; x < piece.shape[y].length; x++) {
                         if (piece.shape[y][x]) {
-                            ctx.fillStyle = piece.color;
+                            const blockType = piece.blocks[y][x];
+                            const color = COLORS[blockType];
+                            
+                            ctx.fillStyle = color;
                             ctx.fillRect(
                                 offsetX + x * blockSize, 
                                 offsetY + y * blockSize, 
@@ -544,7 +642,7 @@
                                 blockSize - 1
                             );
                             
-                            ctx.strokeStyle = piece.color;
+                            ctx.strokeStyle = color;
                             ctx.strokeRect(
                                 offsetX + x * blockSize, 
                                 offsetY + y * blockSize, 
