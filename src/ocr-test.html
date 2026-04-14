@@ -315,7 +315,7 @@
                     };
 
                     this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    
+
                     if (!this.video) {
                         throw new Error('Video element not found');
                     }
@@ -370,7 +370,7 @@
             async initializeTesseract() {
                 try {
                     this.setStatus('Initializing OCR engine...', 'processing');
-                    
+
                     if (typeof Tesseract === 'undefined') {
                         throw new Error('Tesseract library not loaded');
                     }
@@ -387,7 +387,7 @@
                     // Initialize the worker properly
                     await this.worker.loadLanguage('eng');
                     await this.worker.initialize('eng');
-                    
+
                     // Set parameters for better performance and stability
                     await this.worker.setParameters({
                         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
@@ -397,7 +397,7 @@
 
                     this.isTesseractReady = true;
                     this.debugLog('Tesseract initialized successfully');
-                    
+
                 } catch (error) {
                     console.error('Tesseract initialization failed:', error);
                     this.setStatus('OCR initialization failed', 'error');
@@ -409,7 +409,7 @@
 
             toggleOCR() {
                 const button = document.getElementById('toggleOcr');
-                
+
                 if (!button) return;
 
                 if (!this.isInitialized || !this.isVideoReady || !this.isTesseractReady) {
@@ -469,7 +469,7 @@
                     }
 
                     this.debugLog('Capturing frame...');
-                    
+
                     // Draw video frame to canvas
                     this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
 
@@ -487,7 +487,7 @@
 
                     // Extract target area
                     const imageData = this.ctx.getImageData(boxX, boxY, boxWidth, boxHeight);
-                    
+
                     if (!imageData || !imageData.data || imageData.data.length === 0) {
                         this.debugLog('Failed to get image data');
                         return;
@@ -498,7 +498,7 @@
                     tempCanvas.width = boxWidth;
                     tempCanvas.height = boxHeight;
                     const tempCtx = tempCanvas.getContext('2d');
-                    
+
                     if (!tempCtx) {
                         this.debugLog('Failed to get temp canvas context');
                         return;
@@ -533,7 +533,7 @@
                 }
 
                 let src, dst, blurred, thresh;
-                
+
                 try {
                     src = cv.imread(canvas);
                     dst = new cv.Mat();
@@ -584,7 +584,7 @@
                     if (this.isOcrRunning) {
                         const cleanText = text ? text.trim() : '';
                         this.debugLog(`OCR completed - confidence: ${confidence || 0}% - text length: ${cleanText.length}`);
-                        
+
                         if (cleanText) {
                             this.result.value = cleanText;
                             this.setStatus(`Text recognized (${Math.round(confidence || 0)}% confidence)`, 'success');
@@ -597,13 +597,13 @@
                     console.error('OCR error:', error);
                     this.setStatus('OCR processing error', 'error');
                     this.debugLog('OCR error: ' + error.toString());
-                    
+
                     // Try to reinitialize Tesseract if it failed
                     if (error.toString().includes('SaveParameters') || error.toString().includes('null is not an object')) {
                         this.debugLog('Attempting to reinitialize Tesseract...');
                         this.isTesseractReady = false;
                         this.stopOCR();
-                        
+
                         // Reinitialize after a delay
                         setTimeout(async () => {
                             try {
@@ -707,7 +707,7 @@
             debugLog(message) {
                 const timestamp = new Date().toLocaleTimeString();
                 const logMessage = `[${timestamp}] ${message}`;
-                
+
                 if (this.debug) {
                     this.debug.textContent += logMessage + '\n';
                     this.debug.scrollTop = this.debug.scrollHeight;
@@ -718,11 +718,11 @@
             // Cleanup method
             async destroy() {
                 this.stopOCR();
-                
+
                 if (this.stream) {
                     this.stream.getTracks().forEach(track => track.stop());
                 }
-                
+
                 if (this.worker) {
                     try {
                         await this.worker.terminate();
@@ -730,7 +730,7 @@
                         this.debugLog('Worker termination error: ' + error.toString());
                     }
                 }
-                
+
                 this.debugLog('CameraOCR destroyed');
             }
         }

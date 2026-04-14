@@ -93,14 +93,14 @@
             }
 
             checkBounds(height) {
-                return this.position.y + this.radius > height || 
+                return this.position.y + this.radius > height ||
                        this.position.y - this.radius < 0;
             }
 
             checkPipeCollision(pipe) {
                 return this.position.x + this.radius > pipe.position.x &&
                        this.position.x - this.radius < pipe.position.x + pipe.width &&
-                       (this.position.y - this.radius < pipe.topHeight || 
+                       (this.position.y - this.radius < pipe.topHeight ||
                         this.position.y + this.radius > pipe.bottomY);
             }
         }
@@ -130,21 +130,21 @@
                 ctx.fillRect(this.position.x, 0, this.width, this.topHeight);
                 // Bottom pipe body
                 ctx.fillRect(this.position.x, this.bottomY, this.width, this.canvasHeight - this.bottomY);
-                
+
                 // Draw pipe caps (the wider ends)
                 ctx.fillStyle = this.darkColor;
                 // Top pipe cap
-                ctx.fillRect(this.position.x - (this.capWidth - this.width) / 2, 
-                           this.topHeight - this.capHeight, 
-                           this.capWidth, 
+                ctx.fillRect(this.position.x - (this.capWidth - this.width) / 2,
+                           this.topHeight - this.capHeight,
+                           this.capWidth,
                            this.capHeight);
-                
+
                 // Bottom pipe cap
-                ctx.fillRect(this.position.x - (this.capWidth - this.width) / 2, 
-                           this.bottomY, 
-                           this.capWidth, 
+                ctx.fillRect(this.position.x - (this.capWidth - this.width) / 2,
+                           this.bottomY,
+                           this.capWidth,
                            this.capHeight);
-                
+
                 // Add some shading for 3D effect
                 ctx.strokeStyle = this.darkColor;
                 ctx.lineWidth = 2;
@@ -263,16 +263,16 @@
                 this.canvas = canvas;
                 this.ctx = canvas.getContext("2d");
                 this.setupCanvas();
-                
+
                 this.bird = new Bird(150, this.canvas.height / 2);
                 this.pipeManager = new PipeManager(this.canvas.width, this.canvas.height);
                 this.score = new Score();
                 this.gameOverScreen = new GameOverScreen(this.canvas.width, this.canvas.height);
-                
+
                 this.frameCount = 0;
                 this.pipeSpawnInterval = 90;
                 this.isGameOver = false;
-                
+
                 this.setupEventListeners();
                 this.gameLoop();
             }

@@ -96,25 +96,25 @@
                 align-items: flex-start;
                 padding-top: 10px;
             }
-            
+
             #gameContainer {
                 gap: 5px;
                 padding: 5px;
             }
-            
+
             #gameInfo {
                 font-size: 12px;
                 gap: 12px;
             }
-            
+
             .info-section span {
                 font-size: 16px;
             }
-            
+
             .preview-label {
                 font-size: 11px;
             }
-            
+
             #controls {
                 font-size: 10px;
             }
@@ -125,14 +125,35 @@
                 gap: 5px;
                 padding: 5px;
             }
-            
+
             #controls {
                 display: none;
             }
         }
+
+        #exitLink {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #4DA6FF;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid #4DA6FF;
+            border-radius: 5px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        #exitLink:hover {
+            background-color: #4DA6FF;
+            color: #000;
+        }
     </style>
 </head>
 <body>
+    <a href="/" id="exitLink">EXIT</a>
     <div id="gameContainer">
         <div id="gameInfo">
             <div class="info-section">
@@ -145,7 +166,7 @@
                 Lines: <span id="lines">0</span>
             </div>
         </div>
-        
+
         <div id="gameArea">
             <canvas id="mainCanvas"></canvas>
             <div id="previewArea">
@@ -159,7 +180,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div id="controls">
             Touch: Tap=Rotate | Swipe=Move | Swipe Down=Soft Drop | Swipe Up=Hard Drop<br>
             Keys: ←→=Move | ↑=Rotate | ↓=Soft Drop | Space=Hard Drop
@@ -172,7 +193,7 @@
         const ROWS = 24;
         const BLOCK_SIZE = Math.min(25, Math.floor((window.innerHeight * 0.7) / ROWS), Math.floor((window.innerWidth - 140) / COLS));
         const LINES_PER_LEVEL = 20;
-        
+
         // Colors for pieces
         const COLORS = {
             stem: '#A8E6A2',  // Light green
@@ -183,20 +204,20 @@
         // Piece definitions with leaf/stem designations
         const PIECES = {
             I: {
-                shape: [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]],
-                blocks: [[0,'stem',0,0], [0,'stem',0,0], [0,'stem',0,0], [0,'stem',0,0]]
+                shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+                blocks: [[0,0,0,0], ['stem','stem','stem','stem'], [0,0,0,0], [0,0,0,0]]
             },
             T: {
-                shape: [[0,1,0], [0,1,1], [0,1,0]],
-                blocks: [[0,'stem',0], [0,'stem','leaf'], [0,'stem',0]]
+                shape: [[0,1,0], [1,1,1], [0,0,0]],
+                blocks: [[0,'leaf',0], ['stem','stem','stem'], [0,0,0]]
             },
             L: {
-                shape: [[0,1,0], [0,1,0], [0,1,1]],
-                blocks: [[0,'stem',0], [0,'stem',0], [0,'stem','leaf']]
+                shape: [[0,0,1], [1,1,1], [0,0,0]],
+                blocks: [[0,0,'leaf'], ['stem','stem','stem'], [0,0,0]]
             },
             J: {
-                shape: [[0,1,0], [0,1,0], [1,1,0]],
-                blocks: [[0,'stem',0], [0,'stem',0], ['leaf','stem',0]]
+                shape: [[1,0,0], [1,1,1], [0,0,0]],
+                blocks: [['leaf',0,0], ['stem','stem','stem'], [0,0,0]]
             },
             S: {
                 shape: [[0,1,1], [1,1,0], [0,0,0]],
@@ -211,8 +232,8 @@
                 blocks: [['stem',0], ['stem','leaf']]
             },
             shortJ: {
-                shape: [[0,1], [1,1]],
-                blocks: [[0,'stem'], ['leaf','stem']]
+                shape: [[1,1], [1,0]],
+                blocks: [['stem','leaf'], ['stem',0]]
             },
             specialI: {
                 shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
@@ -223,8 +244,8 @@
 
         // Drop weights
         const DROP_WEIGHTS = {
-            I: 0.1, T: 0.1, L: 0.125, J: 0.125, S: 0.125, Z: 0.125,
-            shortL: 0.125, shortJ: 0.125, specialI: 0.05
+            I: 0.1, T: 0.1, L: 0.125, J: 0.125, S: 0.1, Z: 0.1,
+            shortL: 0.15, shortJ: 0.15, specialI: 0.05
         };
 
         // Tetromino class
@@ -242,14 +263,14 @@
                 const n = this.shape.length;
                 const rotatedShape = Array(n).fill().map(() => Array(n).fill(0));
                 const rotatedBlocks = Array(n).fill().map(() => Array(n).fill(0));
-                
+
                 for (let i = 0; i < n; i++) {
                     for (let j = 0; j < n; j++) {
                         rotatedShape[i][j] = this.shape[n - 1 - j][i];
                         rotatedBlocks[i][j] = this.blocks[n - 1 - j][i];
                     }
                 }
-                
+
                 return { shape: rotatedShape, blocks: rotatedBlocks };
             }
 
@@ -259,7 +280,7 @@
                     for (let x = 0; x < this.shape[y].length; x++) {
                         if (this.shape[y][x]) {
                             blocks.push({
-                                x: this.x + x, 
+                                x: this.x + x,
                                 y: this.y + y,
                                 type: this.blocks[y][x]
                             });
@@ -280,9 +301,10 @@
                 this.lines = 0;
                 this.level = 1;
                 this.gameOver = false;
+                this.gameOverTime = 0;
                 this.specialMessage = '';
                 this.messageTimer = 0;
-                
+
                 // Generate initial pieces
                 this.generateNextPieces();
                 this.spawnPiece();
@@ -297,76 +319,77 @@
             getRandomPieceType() {
                 const random = Math.random();
                 let cumulative = 0;
-                
+
                 for (const [type, weight] of Object.entries(DROP_WEIGHTS)) {
                     cumulative += weight;
                     if (random < cumulative) {
                         return type;
                     }
                 }
-                
+
                 return 'I'; // Fallback
             }
 
             spawnPiece() {
                 const type = this.nextPieces.shift();
                 this.generateNextPieces();
-                
+
                 this.currentPiece = new Tetromino(type);
-                
+
                 if (!this.isValidPosition(this.currentPiece)) {
                     this.gameOver = true;
+                    this.gameOverTime = Date.now();
                 }
             }
 
             isValidPosition(piece, offsetX = 0, offsetY = 0) {
                 const blocks = piece.getBlocks();
-                
+
                 for (const block of blocks) {
                     const newX = block.x + offsetX;
                     const newY = block.y + offsetY;
-                    
+
                     if (newX < 0 || newX >= COLS || newY >= ROWS) {
                         return false;
                     }
-                    
+
                     if (newY >= 0 && this.grid[newY][newX]) {
                         return false;
                     }
                 }
-                
+
                 return true;
             }
 
             movePiece(dx, dy) {
                 if (!this.currentPiece) return false;
-                
+
                 if (this.isValidPosition(this.currentPiece, dx, dy)) {
                     this.currentPiece.x += dx;
                     this.currentPiece.y += dy;
                     return true;
                 }
-                
+
                 return false;
             }
 
             rotatePiece() {
                 if (!this.currentPiece) return false;
-                
+
                 const originalShape = this.currentPiece.shape;
                 const originalBlocks = this.currentPiece.blocks;
                 const rotated = this.currentPiece.rotate();
                 this.currentPiece.shape = rotated.shape;
                 this.currentPiece.blocks = rotated.blocks;
-                
+
                 // Try normal rotation
                 if (this.isValidPosition(this.currentPiece)) {
                     return true;
                 }
-                
+
                 // Wall kick attempts
                 const kicks = [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1]];
-                
+
                 for (const [dx, dy] of kicks) {
                     if (this.isValidPosition(this.currentPiece, dx, dy)) {
                         this.currentPiece.x += dx;
@@ -374,7 +397,7 @@
                         return true;
                     }
                 }
-                
+
                 // Rotation failed
                 this.currentPiece.shape = originalShape;
                 this.currentPiece.blocks = originalBlocks;
@@ -383,40 +406,40 @@
 
             dropPiece() {
                 if (!this.currentPiece) return false;
-                
+
                 // Check if piece can move down normally
                 if (this.movePiece(0, 1)) {
                     return true;
                 }
-                
+
                 // If it's a breakable piece (specialI), try to break it apart
                 if (this.currentPiece.breakable && this.currentPiece.type === 'specialI') {
                     const blocks = this.currentPiece.getBlocks();
                     let anyBlockPlaced = false;
-                    
+
                     // Check each block individually
                     for (const block of blocks) {
                         let finalY = block.y;
-                        
+
                         // Drop each block as far as it can go
                         while (finalY + 1 < ROWS && this.grid[finalY + 1][block.x] === 0) {
                             finalY++;
                         }
-                        
+
                         // Place the block if it moved
                         if (finalY >= 0) {
                             this.grid[finalY][block.x] = block.type;
                             anyBlockPlaced = true;
                         }
                     }
-                    
+
                     if (anyBlockPlaced) {
                         this.clearLines();
                         this.spawnPiece();
                         return false;
                     }
                 }
-                
+
                 // Lock piece normally
                 this.lockPiece();
                 return false;
@@ -424,53 +447,53 @@
 
             hardDrop() {
                 if (!this.currentPiece) return;
-                
+
                 // For breakable pieces, handle differently
                 if (this.currentPiece.breakable && this.currentPiece.type === 'specialI') {
                     const blocks = this.currentPiece.getBlocks();
                     let totalDropDistance = 0;
-                    
+
                     // Drop each block individually
                     for (const block of blocks) {
                         let finalY = block.y;
-                        
+
                         // Find where this block will land
                         while (finalY + 1 < ROWS && this.grid[finalY + 1][block.x] === 0) {
                             finalY++;
                             totalDropDistance++;
                         }
-                        
+
                         // Place the block
                         if (finalY >= 0) {
                             this.grid[finalY][block.x] = block.type;
                         }
                     }
-                    
+
                     // Award points based on total drop distance
                     this.score += totalDropDistance * 2;
-                    
+
                     this.clearLines();
                     this.spawnPiece();
                     return;
                 }
-                
+
                 // Normal hard drop for non-breakable pieces
                 while (this.movePiece(0, 1)) {
                     this.score += 2;
                 }
-                
+
                 this.lockPiece();
             }
 
             lockPiece() {
                 const blocks = this.currentPiece.getBlocks();
-                
+
                 for (const block of blocks) {
                     if (block.y >= 0) {
                         this.grid[block.y][block.x] = block.type;
                     }
                 }
-                
+
                 this.clearLines();
                 this.spawnPiece();
             }
@@ -478,41 +501,41 @@
             clearLines() {
                 let linesCleared = 0;
                 let leafLineCleared = false;
-                
+
                 for (let y = ROWS - 1; y >= 0; y--) {
                     if (this.grid[y].every(cell => cell !== 0)) {
                         // Check if entire line is made of leaf blocks
                         if (this.grid[y].every(cell => cell === 'leaf')) {
                             leafLineCleared = true;
                         }
-                        
+
                         this.grid.splice(y, 1);
                         this.grid.unshift(Array(COLS).fill(0));
                         linesCleared++;
                         y++; // Check same row again
                     }
                 }
-                
+
                 if (leafLineCleared) {
                     // Clear entire field
                     this.grid = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-                    
+
                     // Increment level
                     this.level++;
-                    
+
                     // Award bonus points
                     this.score += 1000 * this.level;
-                    
+
                     // Set message to display
                     this.specialMessage = 'SUPER!';
                     this.messageTimer = 120; // Display for 2 seconds at 60fps
-                    
+
                     // Still count the lines for stats
                     this.lines += linesCleared;
                 } else if (linesCleared > 0) {
                     this.lines += linesCleared;
                     this.level = Math.floor(this.lines / LINES_PER_LEVEL) + 1;
-                    
+
                     // Normal scoring
                     const scoreMap = [0, 100, 300, 500, 800];
                     this.score += scoreMap[Math.min(linesCleared, 4)] * this.level;
@@ -530,13 +553,13 @@
                 this.mainCtx = mainCanvas.getContext('2d');
                 this.nextCtx1 = nextCanvas1.getContext('2d');
                 this.nextCtx2 = nextCanvas2.getContext('2d');
-                
+
                 mainCanvas.width = COLS * BLOCK_SIZE;
                 mainCanvas.height = ROWS * BLOCK_SIZE;
-                
+
                 nextCanvas1.width = 4 * BLOCK_SIZE * 0.7;
                 nextCanvas1.height = 4 * BLOCK_SIZE * 0.7;
-                
+
                 nextCanvas2.width = 4 * BLOCK_SIZE * 0.7;
                 nextCanvas2.height = 4 * BLOCK_SIZE * 0.7;
             }
@@ -544,21 +567,17 @@
             drawBlock(ctx, x, y, color, size = BLOCK_SIZE) {
                 ctx.fillStyle = color;
                 ctx.fillRect(x * size, y * size, size - 1, size - 1);
-                
+
                 // Add some depth with a lighter border
                 ctx.strokeStyle = color;
                 ctx.strokeRect(x * size, y * size, size - 1, size - 1);
-                
-                // Placeholder for sprite rendering
-                // ctx.drawImage(spriteImage, spriteX, spriteY, spriteWidth, spriteHeight,
-                //               x * size, y * size, size, size);
             }
 
             render(board) {
                 // Clear canvas
                 this.mainCtx.fillStyle = '#000';
                 this.mainCtx.fillRect(0, 0, this.mainCtx.canvas.width, this.mainCtx.canvas.height);
-                
+
                 // Draw grid
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
@@ -568,7 +587,7 @@
                         }
                     }
                 }
-                
+
                 // Draw current piece
                 if (board.currentPiece && !board.gameOver) {
                     const blocks = board.currentPiece.getBlocks();
@@ -578,46 +597,55 @@
                             this.drawBlock(this.mainCtx, block.x, block.y, color);
                         }
                     }
-                    
+
                     // Draw ghost piece
                     this.drawGhost(board);
                 }
-                
+
                 // Draw next pieces
                 this.drawNextPieces(board.nextPieces);
-                
+
                 // Update UI
                 document.getElementById('score').textContent = board.score;
                 document.getElementById('level').textContent = board.level;
                 document.getElementById('lines').textContent = board.lines;
-                
+
                 // Game over overlay
                 if (board.gameOver) {
                     this.mainCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     this.mainCtx.fillRect(0, 0, this.mainCtx.canvas.width, this.mainCtx.canvas.height);
-                    
+
                     this.mainCtx.fillStyle = '#fff';
                     this.mainCtx.font = '30px Arial';
                     this.mainCtx.textAlign = 'center';
-                    this.mainCtx.fillText('GAME OVER', this.mainCtx.canvas.width / 2, this.mainCtx.canvas.height / 2);
+                    this.mainCtx.fillText('GAME OVER', this.mainCtx.canvas.width / 2, this.mainCtx.canvas.height / 2 - 20);
+
+                    // Show restart prompt after 2 seconds
+                    const timeSinceGameOver = Date.now() - board.gameOverTime;
+                    if (timeSinceGameOver > 2000) {
+                        this.mainCtx.font = '20px Arial';
+                        this.mainCtx.fillStyle = '#4DA6FF';
+                        const restartText = /Mobi|Android/i.test(navigator.userAgent) ? 'Tap to Restart' : 'Press Space to Restart';
+                        this.mainCtx.fillText(restartText, this.mainCtx.canvas.width / 2, this.mainCtx.canvas.height / 2 + 30);
+                    }
                 }
-                
+
                 // Special message display
                 if (board.specialMessage && board.messageTimer > 0) {
                     this.mainCtx.save();
-                    
+
                     // Create gradient text effect
                     const gradient = this.mainCtx.createLinearGradient(0, 0, this.mainCtx.canvas.width, 0);
                     gradient.addColorStop(0, '#FFD700');
                     gradient.addColorStop(0.5, '#FFA500');
                     gradient.addColorStop(1, '#FFD700');
-                    
+
                     this.mainCtx.fillStyle = gradient;
                     this.mainCtx.font = 'bold 48px Arial';
                     this.mainCtx.textAlign = 'center';
                     this.mainCtx.shadowColor = '#000';
                     this.mainCtx.shadowBlur = 10;
-                    
+
                     // Animate the message
                     const scale = 1 + Math.sin(board.messageTimer * 0.1) * 0.1;
                     this.mainCtx.save();
@@ -625,24 +653,24 @@
                     this.mainCtx.scale(scale, scale);
                     this.mainCtx.fillText(board.specialMessage, 0, 0);
                     this.mainCtx.restore();
-                    
+
                     this.mainCtx.restore();
-                    
+
                     board.messageTimer--;
                 }
             }
 
             drawGhost(board) {
                 if (!board.currentPiece) return;
-                
+
                 const ghost = new Tetromino(board.currentPiece.type, board.currentPiece.x, board.currentPiece.y);
                 ghost.shape = board.currentPiece.shape;
                 ghost.blocks = board.currentPiece.blocks;
-                
+
                 while (board.isValidPosition(ghost, 0, 1)) {
                     ghost.y++;
                 }
-                
+
                 const blocks = ghost.getBlocks();
                 for (const block of blocks) {
                     if (block.y >= 0) {
@@ -658,12 +686,12 @@
                 this.nextCtx1.fillRect(0, 0, this.nextCtx1.canvas.width, this.nextCtx1.canvas.height);
                 this.nextCtx2.fillStyle = '#000';
                 this.nextCtx2.fillRect(0, 0, this.nextCtx2.canvas.width, this.nextCtx2.canvas.height);
-                
+
                 // Draw first next piece
                 if (nextPieces.length > 0) {
                     this.drawPieceInCanvas(this.nextCtx1, nextPieces[0]);
                 }
-                
+
                 // Draw second next piece
                 if (nextPieces.length > 1) {
                     this.drawPieceInCanvas(this.nextCtx2, nextPieces[1]);
@@ -674,32 +702,32 @@
                 const piece = new Tetromino(pieceType, 0, 0);
                 const blockSize = BLOCK_SIZE * 0.7;
                 const canvasSize = ctx.canvas.width;
-                
+
                 // Calculate centering offset
                 const pieceWidth = piece.shape[0].length * blockSize;
                 const pieceHeight = piece.shape.length * blockSize;
                 const offsetX = (canvasSize - pieceWidth) / 2;
                 const offsetY = (canvasSize - pieceHeight) / 2;
-                
+
                 for (let y = 0; y < piece.shape.length; y++) {
                     for (let x = 0; x < piece.shape[y].length; x++) {
                         if (piece.shape[y][x]) {
                             const blockType = piece.blocks[y][x];
                             const color = COLORS[blockType];
-                            
+
                             ctx.fillStyle = color;
                             ctx.fillRect(
-                                offsetX + x * blockSize, 
-                                offsetY + y * blockSize, 
-                                blockSize - 1, 
+                                offsetX + x * blockSize,
+                                offsetY + y * blockSize,
+                                blockSize - 1,
                                 blockSize - 1
                             );
-                            
+
                             ctx.strokeStyle = color;
                             ctx.strokeRect(
-                                offsetX + x * blockSize, 
-                                offsetY + y * blockSize, 
-                                blockSize - 1, 
+                                offsetX + x * blockSize,
+                                offsetY + y * blockSize,
+                                blockSize - 1,
                                 blockSize - 1
                             );
                         }
@@ -716,15 +744,21 @@
                 this.touchStartX = null;
                 this.touchStartY = null;
                 this.touchStartTime = null;
-                
+
                 this.setupKeyboardControls();
                 this.setupTouchControls();
             }
 
             setupKeyboardControls() {
                 document.addEventListener('keydown', (e) => {
-                    if (this.board.gameOver) return;
-                    
+                    if (this.board.gameOver) {
+                        // Check if enough time has passed and space is pressed
+                        if (e.key === ' ' && Date.now() - this.board.gameOverTime > 2000) {
+                            this.restartGame();
+                        }
+                        return;
+                    }
+
                     switch(e.key) {
                         case 'ArrowLeft':
                             this.board.movePiece(-1, 0);
@@ -761,16 +795,23 @@
 
                 this.canvas.addEventListener('touchend', (e) => {
                     e.preventDefault();
-                    if (this.board.gameOver) return;
-                    
+
+                    if (this.board.gameOver) {
+                        // Check if enough time has passed for restart
+                        if (Date.now() - this.board.gameOverTime > 2000) {
+                            this.restartGame();
+                        }
+                        return;
+                    }
+
                     const touch = e.changedTouches[0];
                     const deltaX = touch.clientX - this.touchStartX;
                     const deltaY = touch.clientY - this.touchStartY;
                     const deltaTime = Date.now() - this.touchStartTime;
-                    
+
                     const minSwipeDistance = 30;
                     const maxTapTime = 200;
-                    
+
                     if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance && deltaTime < maxTapTime) {
                         // Tap - rotate
                         this.board.rotatePiece();
@@ -794,6 +835,16 @@
                     }
                 });
             }
+
+            restartGame() {
+                // Create a new game board
+                this.board = new GameBoard();
+                // Update the board reference in the game loop
+                if (window.game) {
+                    window.game.board = this.board;
+                    window.game.inputHandler.board = this.board;
+                }
+            }
         }
 
         // GameLoop class
@@ -806,7 +857,7 @@
                     document.getElementById('nextPiece2')
                 );
                 this.inputHandler = new InputHandler(this.board, document.getElementById('mainCanvas'));
-                
+
                 this.lastDropTime = 0;
                 this.running = true;
             }
@@ -817,26 +868,24 @@
 
             gameLoop(timestamp = 0) {
                 if (!this.running) return;
-                
+
                 // Auto drop
                 if (timestamp - this.lastDropTime > this.board.getDropSpeed()) {
                     this.board.dropPiece();
                     this.lastDropTime = timestamp;
                 }
-                
+
                 // Render
                 this.renderer.render(this.board);
-                
+
                 // Continue loop
-                if (!this.board.gameOver) {
-                    requestAnimationFrame((t) => this.gameLoop(t));
-                }
+                requestAnimationFrame((t) => this.gameLoop(t));
             }
         }
 
         // Start the game
-        const game = new GameLoop();
-        game.start();
+        window.game = new GameLoop();
+        window.game.start();
     </script>
 </body>
 </html>
